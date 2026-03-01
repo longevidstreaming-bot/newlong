@@ -1,69 +1,68 @@
-// src/api/entities.js
-
 export const User = {
-  id: "",
-  name: "",
-  email: "",
-};
+  async me() {
+    return null
+  }
+}
 
 export const Video = {
-  id: "",
-  title: "",
-  url: "",
-};
+  async filter() {
+    return []
+  },
+  async create(data) {
+    return { id: String(Date.now()), ...data }
+  }
+}
 
 export const FavoriteVideo = {
-  id: "",
-  userId: "",
-  videoId: "",
-};
+  async filter() {
+    return []
+  }
+}
 
 export const Campaign = {
-  id: "",
-  name: "",
-  description: "",
-};
+  async filter() {
+    return []
+  }
+}
 
 export const Plan = {
-  id: "",
-  name: "",
-  price: 0,
-};
+  async filter() {
+    return []
+  }
+}
 
 export const Payment = {
-  id: "",
-  userId: "",
-  amount: 0,
-  date: null,
-};
+  async filter() {
+    return []
+  }
+}
 
 export const Subscription = {
-  id: "",
-  userId: "",
-  planId: "",
-};
+  async filter() {
+    return []
+  }
+}
 
 export const Notification = {
-  id: "",
-  message: "",
-  read: false,
-};
+  async filter() {
+    return []
+  }
+}
 
 export const AdMetric = {
-  id: "",
-  campaignId: "",
-  views: 0,
-  clicks: 0,
-};
+  async filter() {
+    return []
+  }
+}
 
 export const Advertiser = {
-  id: "",
-  name: "",
-  company: "",
-};
+  async filter() {
+    return []
+  }
+}
 
 export const ArtistApplication = {
-  id: "",
-  userId: "",
-  status: "pending",
-};
+  async filter() {
+    return []
+  }
+}
