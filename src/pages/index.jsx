@@ -32,7 +32,7 @@ import PaymentHistory from "./PaymentHistory";
 
 import AuthPage from "./AuthPage";
 
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
     
