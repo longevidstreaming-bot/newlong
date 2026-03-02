@@ -152,6 +152,9 @@ export const Video = {
             is_deleted: false
           }
         })
+      try {
+        await saveCatalog(supabase, bucket, videos)
+      } catch {}
       return videos
     }
     try {
