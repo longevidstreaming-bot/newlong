@@ -9,22 +9,49 @@ export default async function handler(req, res) {
   }
   const supabase = createClient(url, key)
   try {
-    const prefix = 'uploads'
-    const { data: files, error } = await supabase
-      .storage
-      .from(bucket)
-      .list(prefix, { limit: 1000, sortBy: { column: 'updated_at', order: 'desc' } })
-    if (error) return res.status(500).json({ error: error.message })
+    const gatherFiles = async () => {
+      const collected = []
+      const { data: uploads, error: errUploads } = await supabase
+        .storage
+        .from(bucket)
+        .list('uploads', { limit: 1000, sortBy: { column: 'updated_at', order: 'desc' } })
+      if (!errUploads && Array.isArray(uploads) && uploads.length > 0) {
+        collected.push(...uploads.map(f => ({ ...f, name: f.name, path: `uploads/${f.name}` })))
+      }
+      if (collected.length === 0) {
+        const { data: root, error: errRoot } = await supabase
+          .storage
+          .from(bucket)
+          .list('', { limit: 1000, sortBy: { column: 'updated_at', order: 'desc' } })
+        if (!errRoot && Array.isArray(root)) {
+          const leafFiles = root.filter(f => f.name?.toLowerCase().endsWith('.mp4') || f.name?.toLowerCase().endsWith('.webm'))
+          collected.push(...leafFiles.map(f => ({ ...f, name: f.name, path: f.name })))
+          const folders = root.filter(f => f.id && !f.name?.toLowerCase().endsWith('.mp4') && !f.name?.toLowerCase().endsWith('.webm'))
+          for (const folder of folders) {
+            const { data: sub } = await supabase.storage.from(bucket).list(folder.name, { limit: 1000 })
+            const subFiles = Array.isArray(sub) ? sub : []
+            collected.push(...subFiles.map(sf => ({ ...sf, name: `${folder.name}/${sf.name}`, path: `${folder.name}/${sf.name}` })))
+          }
+        }
+      }
+      return collected
+    }
+    const files = await gatherFiles()
     const videos = []
     for (const f of files || []) {
       const name = f.name || ''
       const lower = name.toLowerCase()
       if (lower.endsWith('.mp4') || lower.endsWith('.webm')) {
         const id = name.split('_')[0]
-        const mp4Path = `${prefix}/${name}`
-        const thumb = files.find(t => t.name.startsWith(id) && t.name.includes('thumbnail'))
-        const thumbPath = thumb ? `${prefix}/${thumb.name}` : null
-        const title = name.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
+        const mp4Path = f.path || name
+        const filenameOnly = name.includes('/') ? name.split('/').pop() : name
+        const thumb = files.find(t => {
+          const tname = t.name || ''
+          const tfile = tname.includes('/') ? tname.split('/').pop() : tname
+          return tfile.startsWith(id) && tfile.includes('thumbnail')
+        })
+        const thumbPath = thumb ? (thumb.path || thumb.name) : null
+        const title = filenameOnly.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
         let video_url = null
         let thumbnail_url = null
         try {
