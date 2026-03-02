@@ -1,6 +1,23 @@
 import { auth, signOutUser, onAuthChanged } from '@/firebase'
 import { getSupabase } from '@/supabase'
 
+async function loadCatalog(supabase, bucket) {
+  try {
+    const { data, error } = await supabase.storage.from(bucket).download('catalog.json')
+    if (error) return []
+    const text = await data.text()
+    const json = JSON.parse(text || '[]')
+    return Array.isArray(json) ? json : []
+  } catch {
+    return []
+  }
+}
+
+async function saveCatalog(supabase, bucket, items) {
+  const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' })
+  await supabase.storage.from(bucket).upload('catalog.json', blob, { upsert: true })
+}
+
 export const User = {
   async me() {
     if (auth.currentUser) {
@@ -89,6 +106,23 @@ export const Video = {
     const supabase = getSupabase()
     if (supabase) {
       const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'videos'
+      const catalog = await loadCatalog(supabase, bucket)
+      if (catalog.length > 0) {
+        return catalog.map(item => ({
+          id: item.id,
+          title: item.title,
+          description: item.description || '',
+          video_url: item.video_url,
+          thumbnail_url: item.thumbnail_url || '',
+          artist_id: item.artist_id || '',
+          artist_name: item.artist_name || 'longEvid streaming',
+          created_date: item.created_date || new Date().toISOString(),
+          category: item.category || 'pop',
+          views: item.views || 0,
+          likes: item.likes || 0,
+          is_deleted: !!item.is_deleted
+        }))
+      }
       const { data } = await supabase.storage.from(bucket).list('uploads', { limit: 1000 })
       const files = Array.isArray(data) ? data : []
       const videos = files
@@ -129,6 +163,24 @@ export const Video = {
     const supabase = getSupabase()
     if (supabase) {
       const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'videos'
+      const catalog = await loadCatalog(supabase, bucket)
+      const byId = catalog.find(v => String(v.id) === String(id))
+      if (byId) {
+        return {
+          id: String(byId.id),
+          title: byId.title,
+          description: byId.description || '',
+          video_url: byId.video_url,
+          thumbnail_url: byId.thumbnail_url || '',
+          artist_id: byId.artist_id || '',
+          artist_name: byId.artist_name || 'longEvid streaming',
+          created_date: byId.created_date || new Date().toISOString(),
+          category: byId.category || 'pop',
+          views: byId.views || 0,
+          likes: byId.likes || 0,
+          is_deleted: !!byId.is_deleted
+        }
+      }
       const { data } = await supabase.storage.from(bucket).list('uploads', { limit: 1000 })
       const files = Array.isArray(data) ? data : []
       const base = files.find(f => f.name.startsWith(`${id}_`) && (f.name.endsWith('.mp4') || f.name.endsWith('.webm')))
@@ -163,7 +215,15 @@ export const Video = {
     }
   },
   async create(data) {
+    const supabase = getSupabase()
     const item = { id: String(Date.now()), created_date: new Date().toISOString(), ...data }
+    if (supabase) {
+      const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'videos'
+      const catalog = await loadCatalog(supabase, bucket)
+      catalog.unshift(item)
+      await saveCatalog(supabase, bucket, catalog)
+      return item
+    }
     try {
       const raw = localStorage.getItem('videos') || '[]'
       const list = JSON.parse(raw)
@@ -173,6 +233,18 @@ export const Video = {
     return item
   },
   async update(id, patch) {
+    const supabase = getSupabase()
+    if (supabase) {
+      const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'videos'
+      const catalog = await loadCatalog(supabase, bucket)
+      const idx = catalog.findIndex(v => String(v.id) === String(id))
+      if (idx >= 0) {
+        catalog[idx] = { ...catalog[idx], ...patch }
+        await saveCatalog(supabase, bucket, catalog)
+        return catalog[idx]
+      }
+      return { id, ...patch }
+    }
     try {
       const raw = localStorage.getItem('videos') || '[]'
       const list = JSON.parse(raw)
