@@ -3,10 +3,12 @@ import { getSupabase } from '@/supabase'
 
 async function loadCatalog(supabase, bucket) {
   try {
-    const { data, error } = await supabase.storage.from(bucket).download('catalog.json')
-    if (error) return []
-    const text = await data.text()
-    const json = JSON.parse(text || '[]')
+    const { data } = supabase.storage.from(bucket).getPublicUrl('catalog.json')
+    const url = data?.publicUrl
+    if (!url) return []
+    const res = await fetch(url, { cache: 'no-store' })
+    if (!res.ok) return []
+    const json = await res.json().catch(() => [])
     return Array.isArray(json) ? json : []
   } catch {
     return []
