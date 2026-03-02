@@ -20,6 +20,24 @@ async function saveCatalog(supabase, bucket, items) {
   await supabase.storage.from(bucket).upload('uploads/catalog.json', blob, { upsert: true, contentType: 'application/json' })
 }
 
+async function listAll(supabase, bucket) {
+  const { data } = await supabase.storage.from(bucket).list('uploads', { limit: 1000 })
+  let files = Array.isArray(data) ? data : []
+  if (files.length === 0) {
+    const { data: root } = await supabase.storage.from(bucket).list('', { limit: 1000 })
+    const rootItems = Array.isArray(root) ? root : []
+    const leafFiles = rootItems.filter(f => f.name?.toLowerCase().endsWith('.mp4') || f.name?.toLowerCase().endsWith('.webm'))
+    const folders = rootItems.filter(f => f.id && !f.name?.toLowerCase().endsWith('.mp4') && !f.name?.toLowerCase().endsWith('.webm'))
+    files = [...leafFiles]
+    for (const folder of folders) {
+      const { data: sub } = await supabase.storage.from(bucket).list(folder.name, { limit: 1000 })
+      const subFiles = Array.isArray(sub) ? sub : []
+      files = files.concat(subFiles.map(sf => ({ ...sf, name: `${folder.name}/${sf.name}` })))
+    }
+  }
+  return files
+}
+
 export const User = {
   async me() {
     if (auth.currentUser) {
@@ -125,15 +143,14 @@ export const Video = {
           is_deleted: !!item.is_deleted
         }))
       }
-      const { data } = await supabase.storage.from(bucket).list('uploads', { limit: 1000 })
-      const files = Array.isArray(data) ? data : []
+      const files = await listAll(supabase, bucket)
       const videos = files
         .filter(f => f.name.toLowerCase().endsWith('.mp4') || f.name.toLowerCase().endsWith('.webm'))
         .map(f => {
           const prefix = f.name.split('_')[0]
           const mp4Path = `uploads/${f.name}`
           const thumb = files.find(t => t.name.startsWith(prefix) && t.name.includes('thumbnail'))
-          const thumbPath = thumb ? `uploads/${thumb.name}` : null
+          const thumbPath = thumb ? (thumb.name.includes('/') ? `${thumb.name}` : `uploads/${thumb.name}`) : null
           const mp4Url = supabase.storage.from(bucket).getPublicUrl(mp4Path).data.publicUrl
           const thumbUrl = thumbPath ? supabase.storage.from(bucket).getPublicUrl(thumbPath).data.publicUrl : null
           const title = f.name.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
@@ -186,13 +203,12 @@ export const Video = {
           is_deleted: !!byId.is_deleted
         }
       }
-      const { data } = await supabase.storage.from(bucket).list('uploads', { limit: 1000 })
-      const files = Array.isArray(data) ? data : []
+      const files = await listAll(supabase, bucket)
       const base = files.find(f => f.name.startsWith(`${id}_`) && (f.name.endsWith('.mp4') || f.name.endsWith('.webm')))
       if (!base) return null
-      const mp4Path = `uploads/${base.name}`
+      const mp4Path = base.name.includes('/') ? base.name : `uploads/${base.name}`
       const thumb = files.find(t => t.name.startsWith(`${id}_`) && t.name.includes('thumbnail'))
-      const thumbPath = thumb ? `uploads/${thumb.name}` : null
+      const thumbPath = thumb ? (thumb.name.includes('/') ? thumb.name : `uploads/${thumb.name}`) : null
       const mp4Url = supabase.storage.from(bucket).getPublicUrl(mp4Path).data.publicUrl
       const thumbUrl = thumbPath ? supabase.storage.from(bucket).getPublicUrl(thumbPath).data.publicUrl : null
       const title = base.name.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
