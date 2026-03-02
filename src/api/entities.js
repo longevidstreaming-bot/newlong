@@ -1,6 +1,5 @@
-import { auth, signOutUser, onAuthChanged, storage, db } from '@/firebase'
-import { ref as fbRef, listAll as fbListAll, getDownloadURL as fbGetDownloadURL } from 'firebase/storage'
-import { collection, getDocs, doc, setDoc, updateDoc } from 'firebase/firestore'
+import { auth, signOutUser, onAuthChanged } from '@/firebase'
+import { collection, getDocs } from 'firebase/firestore'
 import { getSupabase } from '@/supabase'
 
 async function loadCatalog() {
@@ -29,42 +28,7 @@ async function listAll(supabase, bucket) {
   return files
 }
 
-async function listFromFirebase() {
-  try {
-    const base = fbRef(storage, 'uploads')
-    const res = await fbListAll(base)
-    const items = res.items || []
-    const videos = []
-    for (const item of items) {
-      const name = item.name || ''
-      const lower = name.toLowerCase()
-      if (lower.endsWith('.mp4') || lower.endsWith('.webm')) {
-        const prefix = name.split('_')[0]
-        const mp4Url = await fbGetDownloadURL(item)
-        const thumbItem = items.find(it => it.name.startsWith(prefix) && it.name.includes('thumbnail'))
-        const thumbUrl = thumbItem ? await fbGetDownloadURL(thumbItem) : null
-        const title = name.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
-        videos.push({
-          id: prefix,
-          title,
-          description: '',
-          video_url: mp4Url,
-          thumbnail_url: thumbUrl,
-          artist_id: auth.currentUser?.uid || '',
-          artist_name: auth.currentUser?.displayName || 'longEvid streaming',
-          created_date: new Date().toISOString(),
-          category: 'pop',
-          views: 0,
-          likes: 0,
-          is_deleted: false
-        })
-      }
-    }
-    return videos
-  } catch {
-    return []
-  }
-}
+// Firebase Storage não é usado para listagem
 
 async function listFromFirestore() {
   try {
@@ -242,8 +206,6 @@ export const Video = {
         } catch {}
       }
       if (videos.length > 0) return videos
-      const fbVideos = await listFromFirebase()
-      if (fbVideos.length > 0) return fbVideos
       const fsVideos = await listFromFirestore()
       if (fsVideos.length > 0) return fsVideos
       return []
@@ -252,8 +214,6 @@ export const Video = {
       const fromApi = await listFromServerless()
       if (fromApi.length > 0) return fromApi
       const raw = localStorage.getItem('videos') || '[]'
-      const fbVideos = await listFromFirebase()
-      if (fbVideos.length > 0) return fbVideos
       const fsVideos = await listFromFirestore()
       if (fsVideos.length > 0) return fsVideos
       return JSON.parse(raw)
@@ -318,11 +278,6 @@ export const Video = {
         const found = fromApi.find(v => String(v.id) === String(id))
         if (found) return found
       }
-      const fbVideos = await listFromFirebase()
-      if (fbVideos.length > 0) {
-        const found = fbVideos.find(v => String(v.id) === String(id))
-        if (found) return found
-      }
       const fsVideos = await listFromFirestore()
       if (fsVideos.length > 0) {
         const found = fsVideos.find(v => String(v.id) === String(id))
@@ -338,27 +293,14 @@ export const Video = {
   async create(data) {
     const item = { id: String(Date.now()), created_date: new Date().toISOString(), ...data }
     try {
-      const ref = doc(db, 'videos', item.id)
-      await setDoc(ref, item, { merge: true })
-      return item
-    } catch {
-      try {
-        const raw = localStorage.getItem('videos') || '[]'
-        const list = JSON.parse(raw)
-        list.unshift(item)
-        localStorage.setItem('videos', JSON.stringify(list))
-      } catch {}
-      return item
-    }
+      const raw = localStorage.getItem('videos') || '[]'
+      const list = JSON.parse(raw)
+      list.unshift(item)
+      localStorage.setItem('videos', JSON.stringify(list))
+    } catch {}
+    return item
   },
   async update(id, patch) {
-    try {
-      const ref = doc(db, 'videos', String(id))
-      await updateDoc(ref, patch)
-      const fsVideos = await listFromFirestore()
-      const found = fsVideos.find(v => String(v.id) === String(id))
-      if (found) return found
-    } catch {}
     try {
       const raw = localStorage.getItem('videos') || '[]'
       const list = JSON.parse(raw)
