@@ -32,7 +32,7 @@ import PaymentHistory from "./PaymentHistory";
 
 import AuthPage from "./AuthPage";
 
-import { HashRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
     
@@ -95,37 +95,37 @@ function PagesContent() {
                     <Route path="/" element={<Home />} />
                 
                 
-                <Route path="/Home" element={<Home />} />
+                <Route path="/home" element={<Home />} />
                 
-                <Route path="/Watch" element={<Watch />} />
+                <Route path="/watch" element={<Watch />} />
                 
-                <Route path="/Pricing" element={<Pricing />} />
+                <Route path="/pricing" element={<Pricing />} />
                 
-                <Route path="/ArtistDashboard" element={<ArtistDashboard />} />
+                <Route path="/artistdashboard" element={<ArtistDashboard />} />
                 
-                <Route path="/UploadVideo" element={<UploadVideo />} />
+                <Route path="/uploadvideo" element={<UploadVideo />} />
                 
-                <Route path="/PlanSelection" element={<PlanSelection />} />
+                <Route path="/planselection" element={<PlanSelection />} />
                 
-                <Route path="/Profile" element={<Profile />} />
+                <Route path="/profile" element={<Profile />} />
                 
-                <Route path="/AdvertiserDashboard" element={<AdvertiserDashboard />} />
+                <Route path="/advertiserdashboard" element={<AdvertiserDashboard />} />
                 
-                <Route path="/ArtistProfile" element={<ArtistProfile />} />
+                <Route path="/artistprofile" element={<ArtistProfile />} />
                 
-                <Route path="/BecomeArtist" element={<BecomeArtist />} />
+                <Route path="/becomeartist" element={<BecomeArtist />} />
                 
-                <Route path="/ContentModeration" element={<ContentModeration />} />
+                <Route path="/contentmoderation" element={<ContentModeration />} />
                 
-                <Route path="/AdminArtistApplications" element={<AdminArtistApplications />} />
+                <Route path="/adminartistapplications" element={<AdminArtistApplications />} />
                 
-                <Route path="/AdminAds" element={<AdminAds />} />
+                <Route path="/adminads" element={<AdminAds />} />
                 
-                <Route path="/AdminDashboard" element={<AdminDashboard />} />
+                <Route path="/admindashboard" element={<AdminDashboard />} />
                 
-                <Route path="/PaymentHistory" element={<PaymentHistory />} />
+                <Route path="/paymenthistory" element={<PaymentHistory />} />
                 
-                <Route path="/AuthPage" element={<AuthPage />} />
+                <Route path="/authpage" element={<AuthPage />} />
                 
             </Routes>
         </Layout>
