@@ -3,7 +3,7 @@ import { getSupabase } from '@/supabase'
 
 async function loadCatalog(supabase, bucket) {
   try {
-    const { data } = supabase.storage.from(bucket).getPublicUrl('catalog.json')
+    const { data } = supabase.storage.from(bucket).getPublicUrl('uploads/catalog.json')
     const url = data?.publicUrl
     if (!url) return []
     const res = await fetch(url, { cache: 'no-store' })
@@ -17,7 +17,7 @@ async function loadCatalog(supabase, bucket) {
 
 async function saveCatalog(supabase, bucket, items) {
   const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' })
-  await supabase.storage.from(bucket).upload('catalog.json', blob, { upsert: true })
+  await supabase.storage.from(bucket).upload('uploads/catalog.json', blob, { upsert: true, contentType: 'application/json' })
 }
 
 export const User = {
