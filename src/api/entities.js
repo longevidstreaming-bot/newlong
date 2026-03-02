@@ -1,23 +1,13 @@
-import { auth, signOutUser, onAuthChanged } from '@/firebase'
+import { auth, signOutUser, onAuthChanged, storage } from '@/firebase'
+import { ref as fbRef, listAll as fbListAll, getDownloadURL as fbGetDownloadURL } from 'firebase/storage'
 import { getSupabase } from '@/supabase'
 
-async function loadCatalog(supabase, bucket) {
-  try {
-    const { data } = supabase.storage.from(bucket).getPublicUrl('uploads/catalog.json')
-    const url = data?.publicUrl
-    if (!url) return []
-    const res = await fetch(url, { cache: 'no-store' })
-    if (!res.ok) return []
-    const json = await res.json().catch(() => [])
-    return Array.isArray(json) ? json : []
-  } catch {
-    return []
-  }
+async function loadCatalog() {
+  return []
 }
 
-async function saveCatalog(supabase, bucket, items) {
-  const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' })
-  await supabase.storage.from(bucket).upload('uploads/catalog.json', blob, { upsert: true, contentType: 'application/json' })
+async function saveCatalog() {
+  return
 }
 
 async function listAll(supabase, bucket) {
@@ -36,6 +26,43 @@ async function listAll(supabase, bucket) {
     }
   }
   return files
+}
+
+async function listFromFirebase() {
+  try {
+    const base = fbRef(storage, 'uploads')
+    const res = await fbListAll(base)
+    const items = res.items || []
+    const videos = []
+    for (const item of items) {
+      const name = item.name || ''
+      const lower = name.toLowerCase()
+      if (lower.endsWith('.mp4') || lower.endsWith('.webm')) {
+        const prefix = name.split('_')[0]
+        const mp4Url = await fbGetDownloadURL(item)
+        const thumbItem = items.find(it => it.name.startsWith(prefix) && it.name.includes('thumbnail'))
+        const thumbUrl = thumbItem ? await fbGetDownloadURL(thumbItem) : null
+        const title = name.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
+        videos.push({
+          id: prefix,
+          title,
+          description: '',
+          video_url: mp4Url,
+          thumbnail_url: thumbUrl,
+          artist_id: auth.currentUser?.uid || '',
+          artist_name: auth.currentUser?.displayName || 'longEvid streaming',
+          created_date: new Date().toISOString(),
+          category: 'pop',
+          views: 0,
+          likes: 0,
+          is_deleted: false
+        })
+      }
+    }
+    return videos
+  } catch {
+    return []
+  }
 }
 
 export const User = {
@@ -169,13 +196,20 @@ export const Video = {
             is_deleted: false
           }
         })
-      try {
-        await saveCatalog(supabase, bucket, videos)
-      } catch {}
-      return videos
+      if (videos.length > 0) {
+        try {
+          await saveCatalog(supabase, bucket, videos)
+        } catch {}
+      }
+      if (videos.length > 0) return videos
+      const fbVideos = await listFromFirebase()
+      if (fbVideos.length > 0) return fbVideos
+      return []
     }
     try {
       const raw = localStorage.getItem('videos') || '[]'
+      const fbVideos = await listFromFirebase()
+      if (fbVideos.length > 0) return fbVideos
       return JSON.parse(raw)
     } catch {
       return []
@@ -228,6 +262,11 @@ export const Video = {
       }
     }
     try {
+      const fbVideos = await listFromFirebase()
+      if (fbVideos.length > 0) {
+        const found = fbVideos.find(v => String(v.id) === String(id))
+        if (found) return found
+      }
       const raw = localStorage.getItem('videos') || '[]'
       const list = JSON.parse(raw)
       return list.find(v => String(v.id) === String(id)) || null
