@@ -1,6 +1,39 @@
+import { auth, signOutUser, onAuthChanged } from '@/firebase'
+
 export const User = {
   async me() {
-    return null
+    if (auth.currentUser) {
+      const u = auth.currentUser
+      return {
+        id: u.uid,
+        full_name: u.displayName || u.email || 'Usuário',
+        email: u.email || '',
+        role: 'user'
+      }
+    }
+    return new Promise((resolve) => {
+      const unsub = onAuthChanged((u) => {
+        unsub()
+        if (u) {
+          resolve({
+            id: u.uid,
+            full_name: u.displayName || u.email || 'Usuário',
+            email: u.email || '',
+            role: 'user'
+          })
+        } else {
+          resolve(null)
+        }
+      })
+      setTimeout(() => { try { unsub() } catch {} ; resolve(null) }, 600)
+    })
+  },
+  async logout() {
+    await signOutUser()
+    return true
+  },
+  async update(id, data) {
+    return { id, ...data }
   }
 }
 
@@ -46,6 +79,9 @@ export const Subscription = {
 export const Notification = {
   async filter() {
     return []
+  },
+  async update(id, data) {
+    return { id, ...data }
   }
 }
 
