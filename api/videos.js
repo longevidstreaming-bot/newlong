@@ -11,27 +11,29 @@ export default async function handler(req, res) {
   try {
     const gatherFiles = async () => {
       const collected = []
-      const { data: uploads, error: errUploads } = await supabase
-        .storage
-        .from(bucket)
-        .list('uploads', { limit: 1000, sortBy: { column: 'updated_at', order: 'desc' } })
-      if (!errUploads && Array.isArray(uploads) && uploads.length > 0) {
-        collected.push(...uploads.map(f => ({ ...f, name: f.name, path: `uploads/${f.name}` })))
-      }
-      if (collected.length === 0) {
-        const { data: root, error: errRoot } = await supabase
+      const visited = new Set()
+      const queue = ['', 'uploads']
+      while (queue.length) {
+        const prefix = queue.shift()
+        const keyPrefix = prefix || ''
+        if (visited.has(keyPrefix)) continue
+        visited.add(keyPrefix)
+        const { data, error } = await supabase
           .storage
           .from(bucket)
-          .list('', { limit: 1000, sortBy: { column: 'updated_at', order: 'desc' } })
-        if (!errRoot && Array.isArray(root)) {
-          const leafFiles = root.filter(f => f.name?.toLowerCase().endsWith('.mp4') || f.name?.toLowerCase().endsWith('.webm'))
-          collected.push(...leafFiles.map(f => ({ ...f, name: f.name, path: f.name })))
-          const folders = root.filter(f => f.id && !f.name?.toLowerCase().endsWith('.mp4') && !f.name?.toLowerCase().endsWith('.webm'))
-          for (const folder of folders) {
-            const { data: sub } = await supabase.storage.from(bucket).list(folder.name, { limit: 1000 })
-            const subFiles = Array.isArray(sub) ? sub : []
-            collected.push(...subFiles.map(sf => ({ ...sf, name: `${folder.name}/${sf.name}`, path: `${folder.name}/${sf.name}` })))
+          .list(prefix, { limit: 1000, sortBy: { column: 'updated_at', order: 'desc' } })
+        if (error || !Array.isArray(data)) continue
+        for (const item of data) {
+          const name = item.name || ''
+          // Folder entries have id (or no extension)
+          const isFolder = item.id && !name.toLowerCase().endsWith('.mp4') && !name.toLowerCase().endsWith('.webm')
+          if (isFolder) {
+            const next = prefix ? `${prefix}/${name}` : name
+            queue.push(next)
+            continue
           }
+          const path = prefix ? `${prefix}/${name}` : name
+          collected.push({ ...item, name: path, path })
         }
       }
       return collected
@@ -42,13 +44,13 @@ export default async function handler(req, res) {
       const name = f.name || ''
       const lower = name.toLowerCase()
       if (lower.endsWith('.mp4') || lower.endsWith('.webm')) {
-        const id = name.split('_')[0]
         const mp4Path = f.path || name
         const filenameOnly = name.includes('/') ? name.split('/').pop() : name
+        const baseId = filenameOnly.replace(/\.(mp4|webm)$/i, '')
         const thumb = files.find(t => {
           const tname = t.name || ''
           const tfile = tname.includes('/') ? tname.split('/').pop() : tname
-          return tfile.startsWith(id) && tfile.includes('thumbnail')
+          return tfile.startsWith(baseId) && tfile.includes('thumbnail')
         })
         const thumbPath = thumb ? (thumb.path || thumb.name) : null
         const title = filenameOnly.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
@@ -65,7 +67,7 @@ export default async function handler(req, res) {
           } catch {}
         }
         videos.push({
-          id,
+          id: baseId,
           title,
           description: '',
           video_url,
