@@ -35,6 +35,52 @@ export const User = {
   },
   async update(id, data) {
     return { id, ...data }
+  },
+  async filter(criteria = {}, order = '-created_date', limit = 8) {
+    const videos = await Video.filter()
+    const map = new Map()
+    videos.forEach(v => {
+      const id = v.artist_id || 'unknown'
+      if (!map.has(id)) {
+        map.set(id, {
+          id,
+          artist_name: v.artist_name || 'Artista',
+          artist_avatar: v.thumbnail_url || '',
+          artist_bio: '',
+          created_date: v.created_date
+        })
+      }
+    })
+    let list = Array.from(map.values())
+    if (criteria?.role === 'artist') {
+      // already only artists inferred from vídeos
+    }
+    list = list.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
+    if (typeof limit === 'number') list = list.slice(0, limit)
+    return list
+  },
+  async get(id) {
+    const videos = await Video.filter()
+    const fromVideo = videos.find(v => String(v.artist_id) === String(id))
+    if (fromVideo) {
+      return {
+        id: String(id),
+        artist_name: fromVideo.artist_name || 'Artista',
+        artist_avatar: fromVideo.thumbnail_url || '',
+        artist_bio: '',
+        social_links: {}
+      }
+    }
+    if (auth.currentUser && String(auth.currentUser.uid) === String(id)) {
+      return {
+        id: auth.currentUser.uid,
+        artist_name: auth.currentUser.displayName || auth.currentUser.email || 'Usuário',
+        artist_avatar: '',
+        artist_bio: '',
+        social_links: {}
+      }
+    }
+    return null
   }
 }
 
