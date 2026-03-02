@@ -1,5 +1,6 @@
-import { auth, signOutUser, onAuthChanged, storage } from '@/firebase'
+import { auth, signOutUser, onAuthChanged, storage, db } from '@/firebase'
 import { ref as fbRef, listAll as fbListAll, getDownloadURL as fbGetDownloadURL } from 'firebase/storage'
+import { collection, getDocs } from 'firebase/firestore'
 import { getSupabase } from '@/supabase'
 
 async function loadCatalog() {
@@ -59,6 +60,32 @@ async function listFromFirebase() {
         })
       }
     }
+    return videos
+  } catch {
+    return []
+  }
+}
+
+async function listFromFirestore() {
+  try {
+    const snap = await getDocs(collection(db, 'videos'))
+    const videos = snap.docs.map(doc => {
+      const d = doc.data() || {}
+      return {
+        id: String(doc.id),
+        title: d.title || 'Vídeo',
+        description: d.description || '',
+        video_url: d.video_url || d.file_url || d.url || '',
+        thumbnail_url: d.thumbnail_url || d.thumb_url || '',
+        artist_id: d.artist_id || '',
+        artist_name: d.artist_name || 'longEvid streaming',
+        created_date: d.created_date || new Date().toISOString(),
+        category: d.category || 'pop',
+        views: d.views || 0,
+        likes: d.likes || 0,
+        is_deleted: !!d.is_deleted
+      }
+    })
     return videos
   } catch {
     return []
@@ -204,12 +231,16 @@ export const Video = {
       if (videos.length > 0) return videos
       const fbVideos = await listFromFirebase()
       if (fbVideos.length > 0) return fbVideos
+      const fsVideos = await listFromFirestore()
+      if (fsVideos.length > 0) return fsVideos
       return []
     }
     try {
       const raw = localStorage.getItem('videos') || '[]'
       const fbVideos = await listFromFirebase()
       if (fbVideos.length > 0) return fbVideos
+      const fsVideos = await listFromFirestore()
+      if (fsVideos.length > 0) return fsVideos
       return JSON.parse(raw)
     } catch {
       return []
@@ -265,6 +296,11 @@ export const Video = {
       const fbVideos = await listFromFirebase()
       if (fbVideos.length > 0) {
         const found = fbVideos.find(v => String(v.id) === String(id))
+        if (found) return found
+      }
+      const fsVideos = await listFromFirestore()
+      if (fsVideos.length > 0) {
+        const found = fsVideos.find(v => String(v.id) === String(id))
         if (found) return found
       }
       const raw = localStorage.getItem('videos') || '[]'
