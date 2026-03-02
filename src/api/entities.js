@@ -92,6 +92,17 @@ async function listFromFirestore() {
   }
 }
 
+async function listFromServerless() {
+  try {
+    const res = await fetch('/api/videos', { cache: 'no-store' })
+    if (!res.ok) return []
+    const data = await res.json()
+    return Array.isArray(data) ? data : []
+  } catch {
+    return []
+  }
+}
+
 export const User = {
   async me() {
     if (auth.currentUser) {
@@ -179,6 +190,8 @@ export const Video = {
   async filter() {
     const supabase = getSupabase()
     if (supabase) {
+      const fromApi = await listFromServerless()
+      if (fromApi.length > 0) return fromApi
       const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'videos'
       const catalog = await loadCatalog(supabase, bucket)
       if (catalog.length > 0) {
@@ -236,6 +249,8 @@ export const Video = {
       return []
     }
     try {
+      const fromApi = await listFromServerless()
+      if (fromApi.length > 0) return fromApi
       const raw = localStorage.getItem('videos') || '[]'
       const fbVideos = await listFromFirebase()
       if (fbVideos.length > 0) return fbVideos
@@ -249,6 +264,11 @@ export const Video = {
   async get(id) {
     const supabase = getSupabase()
     if (supabase) {
+      const fromApi = await listFromServerless()
+      if (fromApi.length > 0) {
+        const found = fromApi.find(v => String(v.id) === String(id))
+        if (found) return found
+      }
       const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'videos'
       const catalog = await loadCatalog(supabase, bucket)
       const byId = catalog.find(v => String(v.id) === String(id))
@@ -293,6 +313,11 @@ export const Video = {
       }
     }
     try {
+      const fromApi = await listFromServerless()
+      if (fromApi.length > 0) {
+        const found = fromApi.find(v => String(v.id) === String(id))
+        if (found) return found
+      }
       const fbVideos = await listFromFirebase()
       if (fbVideos.length > 0) {
         const found = fbVideos.find(v => String(v.id) === String(id))
