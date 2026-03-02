@@ -1,4 +1,5 @@
 import { auth, signOutUser, onAuthChanged } from '@/firebase'
+import { getSupabase } from '@/supabase'
 
 export const User = {
   async me() {
@@ -39,6 +40,38 @@ export const User = {
 
 export const Video = {
   async filter() {
+    const supabase = getSupabase()
+    if (supabase) {
+      const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'videos'
+      const { data } = await supabase.storage.from(bucket).list('uploads', { limit: 1000 })
+      const files = Array.isArray(data) ? data : []
+      const videos = files
+        .filter(f => f.name.toLowerCase().endsWith('.mp4') || f.name.toLowerCase().endsWith('.webm'))
+        .map(f => {
+          const prefix = f.name.split('_')[0]
+          const mp4Path = `uploads/${f.name}`
+          const thumb = files.find(t => t.name.startsWith(prefix) && t.name.includes('thumbnail'))
+          const thumbPath = thumb ? `uploads/${thumb.name}` : null
+          const mp4Url = supabase.storage.from(bucket).getPublicUrl(mp4Path).data.publicUrl
+          const thumbUrl = thumbPath ? supabase.storage.from(bucket).getPublicUrl(thumbPath).data.publicUrl : null
+          const title = f.name.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
+          return {
+            id: prefix,
+            title,
+            description: '',
+            video_url: mp4Url,
+            thumbnail_url: thumbUrl,
+            artist_id: auth.currentUser?.uid || '',
+            artist_name: auth.currentUser?.displayName || 'longEvid streaming',
+            created_date: f.updated_at || new Date().toISOString(),
+            category: 'pop',
+            views: 0,
+            likes: 0,
+            is_deleted: false
+          }
+        })
+      return videos
+    }
     try {
       const raw = localStorage.getItem('videos') || '[]'
       return JSON.parse(raw)
@@ -47,6 +80,34 @@ export const Video = {
     }
   },
   async get(id) {
+    const supabase = getSupabase()
+    if (supabase) {
+      const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'videos'
+      const { data } = await supabase.storage.from(bucket).list('uploads', { limit: 1000 })
+      const files = Array.isArray(data) ? data : []
+      const base = files.find(f => f.name.startsWith(`${id}_`) && (f.name.endsWith('.mp4') || f.name.endsWith('.webm')))
+      if (!base) return null
+      const mp4Path = `uploads/${base.name}`
+      const thumb = files.find(t => t.name.startsWith(`${id}_`) && t.name.includes('thumbnail'))
+      const thumbPath = thumb ? `uploads/${thumb.name}` : null
+      const mp4Url = supabase.storage.from(bucket).getPublicUrl(mp4Path).data.publicUrl
+      const thumbUrl = thumbPath ? supabase.storage.from(bucket).getPublicUrl(thumbPath).data.publicUrl : null
+      const title = base.name.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
+      return {
+        id: String(id),
+        title,
+        description: '',
+        video_url: mp4Url,
+        thumbnail_url: thumbUrl,
+        artist_id: auth.currentUser?.uid || '',
+        artist_name: auth.currentUser?.displayName || 'longEvid streaming',
+        created_date: base.updated_at || new Date().toISOString(),
+        category: 'pop',
+        views: 0,
+        likes: 0,
+        is_deleted: false
+      }
+    }
     try {
       const raw = localStorage.getItem('videos') || '[]'
       const list = JSON.parse(raw)
