@@ -1,6 +1,6 @@
 import { auth, signOutUser, onAuthChanged, storage, db } from '@/firebase'
 import { ref as fbRef, listAll as fbListAll, getDownloadURL as fbGetDownloadURL } from 'firebase/storage'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, doc, setDoc, updateDoc } from 'firebase/firestore'
 import { getSupabase } from '@/supabase'
 
 async function loadCatalog() {
@@ -311,36 +311,29 @@ export const Video = {
     }
   },
   async create(data) {
-    const supabase = getSupabase()
     const item = { id: String(Date.now()), created_date: new Date().toISOString(), ...data }
-    if (supabase) {
-      const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'videos'
-      const catalog = await loadCatalog(supabase, bucket)
-      catalog.unshift(item)
-      await saveCatalog(supabase, bucket, catalog)
+    try {
+      const ref = doc(db, 'videos', item.id)
+      await setDoc(ref, item, { merge: true })
+      return item
+    } catch {
+      try {
+        const raw = localStorage.getItem('videos') || '[]'
+        const list = JSON.parse(raw)
+        list.unshift(item)
+        localStorage.setItem('videos', JSON.stringify(list))
+      } catch {}
       return item
     }
-    try {
-      const raw = localStorage.getItem('videos') || '[]'
-      const list = JSON.parse(raw)
-      list.unshift(item)
-      localStorage.setItem('videos', JSON.stringify(list))
-    } catch {}
-    return item
   },
   async update(id, patch) {
-    const supabase = getSupabase()
-    if (supabase) {
-      const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'videos'
-      const catalog = await loadCatalog(supabase, bucket)
-      const idx = catalog.findIndex(v => String(v.id) === String(id))
-      if (idx >= 0) {
-        catalog[idx] = { ...catalog[idx], ...patch }
-        await saveCatalog(supabase, bucket, catalog)
-        return catalog[idx]
-      }
-      return { id, ...patch }
-    }
+    try {
+      const ref = doc(db, 'videos', String(id))
+      await updateDoc(ref, patch)
+      const fsVideos = await listFromFirestore()
+      const found = fsVideos.find(v => String(v.id) === String(id))
+      if (found) return found
+    } catch {}
     try {
       const raw = localStorage.getItem('videos') || '[]'
       const list = JSON.parse(raw)
