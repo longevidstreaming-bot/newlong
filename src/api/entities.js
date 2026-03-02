@@ -39,10 +39,44 @@ export const User = {
 
 export const Video = {
   async filter() {
-    return []
+    try {
+      const raw = localStorage.getItem('videos') || '[]'
+      return JSON.parse(raw)
+    } catch {
+      return []
+    }
+  },
+  async get(id) {
+    try {
+      const raw = localStorage.getItem('videos') || '[]'
+      const list = JSON.parse(raw)
+      return list.find(v => String(v.id) === String(id)) || null
+    } catch {
+      return null
+    }
   },
   async create(data) {
-    return { id: String(Date.now()), ...data }
+    const item = { id: String(Date.now()), created_date: new Date().toISOString(), ...data }
+    try {
+      const raw = localStorage.getItem('videos') || '[]'
+      const list = JSON.parse(raw)
+      list.unshift(item)
+      localStorage.setItem('videos', JSON.stringify(list))
+    } catch {}
+    return item
+  },
+  async update(id, patch) {
+    try {
+      const raw = localStorage.getItem('videos') || '[]'
+      const list = JSON.parse(raw)
+      const idx = list.findIndex(v => String(v.id) === String(id))
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], ...patch }
+        localStorage.setItem('videos', JSON.stringify(list))
+        return list[idx]
+      }
+    } catch {}
+    return { id, ...patch }
   }
 }
 

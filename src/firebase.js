@@ -7,7 +7,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBSAKkNe48drloTUMJQbVZCeVOuBQcIPV4",
   authDomain: "longevid-4963d.firebaseapp.com",
   projectId: "longevid-4963d",
-  storageBucket: "longevid-4963d.firebasestorage.app",
+  storageBucket: "longevid-4963d.appspot.com",
   messagingSenderId: "429778146632",
   appId: "1:429778146632:web:aefed188d2120056c98f7d"
 };

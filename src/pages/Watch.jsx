@@ -99,7 +99,9 @@ export default function Watch() {
       }
       
       try {
-        const fetchedVideo = await Video.get(videoId);
+        const fetchedVideo = typeof Video.get === 'function'
+          ? await Video.get(videoId)
+          : ((await Video.filter()).find(v => String(v.id) === String(videoId)) || null);
         console.log('🎯 Vídeo buscado:', fetchedVideo);
 
         if (!fetchedVideo || fetchedVideo.is_deleted) {

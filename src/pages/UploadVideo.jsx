@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '@/api/entities';
 import { Video } from '@/api/entities';
-import { ArtistApplication } from '@/api/entities';
 import { UploadFile } from '@/api/integrations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,34 +58,10 @@ export default function UploadVideo() {
           window.location.href = createPageUrl('AuthPage');
           return;
         }
-        
-        // Verificação 1: Role de artista
-        if (user.role === 'artist') {
-          console.log('✅ Usuário é artista pela role');
-          setCurrentUser(user);
-          setIsLoading(false);
-          return;
-        }
-
-        // Verificação 2: Candidatura aprovada (fallback)
-        console.log('🔍 Verificando candidatura aprovada...');
-        try {
-          const applications = await ArtistApplication.filter({ user_id: user.id });
-          const approvedApp = applications.find(app => app.status === 'approved');
-          
-          if (approvedApp) {
-            console.log('✅ Usuário tem candidatura aprovada');
-            setCurrentUser(user);
-            setIsLoading(false);
-            return;
-          }
-        } catch (appError) {
-          console.log('⚠️ Erro ao verificar candidatura:', appError);
-        }
-        
-        // Se chegou aqui, não é artista
-        console.log('❌ Usuário não é artista, redirecionando...');
-        window.location.href = createPageUrl('BecomeArtist');
+        // Qualquer usuário logado pode fazer upload
+        console.log('✅ Usuário logado pode enviar vídeo');
+        setCurrentUser(user);
+        setIsLoading(false);
         
       } catch (error) {
         console.error('❌ Erro geral na verificação:', error);
