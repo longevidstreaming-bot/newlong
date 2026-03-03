@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/(.*)", "dest": "/" }
+    { "handle": "filesystem" },
+    { "src": "/.*", "dest": "/" }
   ]
 }
