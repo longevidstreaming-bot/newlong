@@ -11,21 +11,30 @@ async function saveCatalog() {
 }
 
 async function listAll(supabase, bucket) {
-  const { data } = await supabase.storage.from(bucket).list('uploads', { limit: 1000 })
-  let files = Array.isArray(data) ? data : []
-  if (files.length === 0) {
-    const { data: root } = await supabase.storage.from(bucket).list('', { limit: 1000 })
-    const rootItems = Array.isArray(root) ? root : []
-    const leafFiles = rootItems.filter(f => f.name?.toLowerCase().endsWith('.mp4') || f.name?.toLowerCase().endsWith('.webm'))
-    const folders = rootItems.filter(f => f.id && !f.name?.toLowerCase().endsWith('.mp4') && !f.name?.toLowerCase().endsWith('.webm'))
-    files = [...leafFiles]
-    for (const folder of folders) {
-      const { data: sub } = await supabase.storage.from(bucket).list(folder.name, { limit: 1000 })
-      const subFiles = Array.isArray(sub) ? sub : []
-      files = files.concat(subFiles.map(sf => ({ ...sf, name: `${folder.name}/${sf.name}` })))
+  const collected = []
+  const visited = new Set()
+  const queue = ['', 'uploads']
+  while (queue.length) {
+    const prefix = queue.shift()
+    const keyPrefix = prefix || ''
+    if (visited.has(keyPrefix)) continue
+    visited.add(keyPrefix)
+    const { data } = await supabase.storage.from(bucket).list(prefix, { limit: 1000 })
+    const items = Array.isArray(data) ? data : []
+    for (const item of items) {
+      const name = item.name || ''
+      const lower = name.toLowerCase()
+      const isVideo = lower.endsWith('.mp4') || lower.endsWith('.webm')
+      if (isVideo) {
+        const path = prefix ? `${prefix}/${name}` : name
+        collected.push({ ...item, name: path, path })
+      } else {
+        const next = prefix ? `${prefix}/${name}` : name
+        queue.push(next)
+      }
     }
   }
-  return files
+  return collected
 }
 
 // Firebase Storage não é usado para listagem
@@ -178,15 +187,19 @@ export const Video = {
       const videos = files
         .filter(f => f.name.toLowerCase().endsWith('.mp4') || f.name.toLowerCase().endsWith('.webm'))
         .map(f => {
-          const prefix = f.name.split('_')[0]
-          const mp4Path = `uploads/${f.name}`
-          const thumb = files.find(t => t.name.startsWith(prefix) && t.name.includes('thumbnail'))
-          const thumbPath = thumb ? (thumb.name.includes('/') ? `${thumb.name}` : `uploads/${thumb.name}`) : null
+          const fileName = f.name.includes('/') ? f.name.split('/').pop() : f.name
+          const baseId = fileName.replace(/\.(mp4|webm)$/i, '')
+          const mp4Path = f.path || f.name
+          const thumb = files.find(t => {
+            const tfile = t.name.includes('/') ? t.name.split('/').pop() : t.name
+            return tfile.startsWith(baseId) && tfile.includes('thumbnail')
+          })
+          const thumbPath = thumb ? (thumb.path || thumb.name) : null
           const mp4Url = supabase.storage.from(bucket).getPublicUrl(mp4Path).data.publicUrl
           const thumbUrl = thumbPath ? supabase.storage.from(bucket).getPublicUrl(thumbPath).data.publicUrl : null
-          const title = f.name.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
+          const title = fileName.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
           return {
-            id: prefix,
+            id: baseId,
             title,
             description: '',
             video_url: mp4Url,
@@ -249,14 +262,21 @@ export const Video = {
         }
       }
       const files = await listAll(supabase, bucket)
-      const base = files.find(f => f.name.startsWith(`${id}_`) && (f.name.endsWith('.mp4') || f.name.endsWith('.webm')))
+      const base = files.find(f => {
+        const fname = f.name.includes('/') ? f.name.split('/').pop() : f.name
+        return fname.startsWith(`${id}`) && (fname.endsWith('.mp4') || fname.endsWith('.webm'))
+      })
       if (!base) return null
-      const mp4Path = base.name.includes('/') ? base.name : `uploads/${base.name}`
-      const thumb = files.find(t => t.name.startsWith(`${id}_`) && t.name.includes('thumbnail'))
-      const thumbPath = thumb ? (thumb.name.includes('/') ? thumb.name : `uploads/${thumb.name}`) : null
+      const mp4Path = base.path || base.name
+      const thumb = files.find(t => {
+        const tfile = t.name.includes('/') ? t.name.split('/').pop() : t.name
+        return tfile.startsWith(`${id}`) && tfile.includes('thumbnail')
+      })
+      const thumbPath = thumb ? (thumb.path || thumb.name) : null
       const mp4Url = supabase.storage.from(bucket).getPublicUrl(mp4Path).data.publicUrl
       const thumbUrl = thumbPath ? supabase.storage.from(bucket).getPublicUrl(thumbPath).data.publicUrl : null
-      const title = base.name.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
+      const baseFile = base.name.includes('/') ? base.name.split('/').pop() : base.name
+      const title = baseFile.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
       return {
         id: String(id),
         title,
