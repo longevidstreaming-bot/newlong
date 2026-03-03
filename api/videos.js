@@ -25,15 +25,15 @@ export default async function handler(req, res) {
         if (error || !Array.isArray(data)) continue
         for (const item of data) {
           const name = item.name || ''
-          // Folder entries have id (or no extension)
-          const isFolder = item.id && !name.toLowerCase().endsWith('.mp4') && !name.toLowerCase().endsWith('.webm')
-          if (isFolder) {
-            const next = prefix ? `${prefix}/${name}` : name
+          const next = prefix ? `${prefix}/${name}` : name
+          const lower = name.toLowerCase()
+          const isVideo = lower.endsWith('.mp4') || lower.endsWith('.webm')
+          if (isVideo) {
+            const path = next
+            collected.push({ ...item, name: path, path })
+          } else {
             queue.push(next)
-            continue
           }
-          const path = prefix ? `${prefix}/${name}` : name
-          collected.push({ ...item, name: path, path })
         }
       }
       return collected
