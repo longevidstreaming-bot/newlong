@@ -5,7 +5,10 @@ export default async function handler(req, res) {
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY
     const bucket = process.env.SUPABASE_BUCKET || 'videos'
     if (!url || !key) {
-      return res.status(500).json({ error: 'Supabase env vars missing' })
+      const missing = []
+      if (!url) missing.push('SUPABASE_URL')
+      if (!key) missing.push('SUPABASE_SERVICE_ROLE_KEY')
+      return res.status(503).json({ error: 'Supabase env vars missing', missing })
     }
     const supabase = createClient(url, key)
     const gatherFiles = async () => {
