@@ -1,13 +1,13 @@
-module.exports = async (req, res) => {
-  const { createClient } = await import('@supabase/supabase-js')
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const bucket = process.env.SUPABASE_BUCKET || 'videos'
-  if (!url || !key) {
-    return res.status(500).json({ error: 'Supabase env vars missing' })
-  }
-  const supabase = createClient(url, key)
+export default async function handler(req, res) {
   try {
+    const { createClient } = await import('@supabase/supabase-js')
+    const url = process.env.SUPABASE_URL
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const bucket = process.env.SUPABASE_BUCKET || 'videos'
+    if (!url || !key) {
+      return res.status(500).json({ error: 'Supabase env vars missing' })
+    }
+    const supabase = createClient(url, key)
     const gatherFiles = async () => {
       const collected = []
       const visited = new Set()
@@ -21,7 +21,11 @@ module.exports = async (req, res) => {
           .storage
           .from(bucket)
           .list(prefix, { limit: 1000, sortBy: { column: 'updated_at', order: 'desc' } })
-        if (error || !Array.isArray(data)) continue
+        if (error) {
+          // Continue to next prefix if folder listing fails
+          continue
+        }
+        if (!Array.isArray(data)) continue
         for (const item of data) {
           const name = item.name || ''
           const next = prefix ? `${prefix}/${name}` : name
@@ -55,15 +59,13 @@ module.exports = async (req, res) => {
         const title = filenameOnly.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
         let video_url = null
         let thumbnail_url = null
-        try {
-          const { data } = await supabase.storage.from(bucket).createSignedUrl(mp4Path, 60 * 60 * 24 * 7)
-          video_url = data?.signedUrl || null
-        } catch {}
+        {
+          const { data, error } = await supabase.storage.from(bucket).createSignedUrl(mp4Path, 60 * 60 * 24 * 7)
+          if (!error) video_url = data?.signedUrl || null
+        }
         if (thumbPath) {
-          try {
-            const { data } = await supabase.storage.from(bucket).createSignedUrl(thumbPath, 60 * 60 * 24 * 7)
-            thumbnail_url = data?.signedUrl || null
-          } catch {}
+          const { data, error } = await supabase.storage.from(bucket).createSignedUrl(thumbPath, 60 * 60 * 24 * 7)
+          if (!error) thumbnail_url = data?.signedUrl || null
         }
         videos.push({
           id: baseId,
