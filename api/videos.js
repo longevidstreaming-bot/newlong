@@ -1,6 +1,5 @@
-const { createClient } = require('@supabase/supabase-js')
-
 module.exports = async (req, res) => {
+  const { createClient } = await import('@supabase/supabase-js')
   const url = process.env.SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   const bucket = process.env.SUPABASE_BUCKET || 'videos'
@@ -84,6 +83,6 @@ module.exports = async (req, res) => {
     }
     return res.status(200).json(videos)
   } catch (e) {
-    return res.status(500).json({ error: e.message })
+    return res.status(500).json({ error: e?.message || 'Internal error' })
   }
 }
