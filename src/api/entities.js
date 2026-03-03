@@ -163,8 +163,6 @@ export const Video = {
   async filter() {
     const supabase = getSupabase()
     if (supabase) {
-      const fromApi = await listFromServerless()
-      if (fromApi.length > 0) return fromApi
       const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'videos'
       const catalog = await loadCatalog(supabase, bucket)
       if (catalog.length > 0) {
@@ -213,6 +211,26 @@ export const Video = {
             is_deleted: false
           }
         })
+      // Override with local metadata if present
+      try {
+        const raw = localStorage.getItem('videos') || '[]'
+        const localList = JSON.parse(raw)
+        const localMap = new Map(localList.map(v => [String(v.id), v]))
+        for (let i = 0; i < videos.length; i++) {
+          const id = String(videos[i].id)
+          if (localMap.has(id)) {
+            const meta = localMap.get(id)
+            videos[i] = { ...videos[i], ...meta }
+          }
+        }
+        // Include purely local entries not present in storage listing
+        const listedIds = new Set(videos.map(v => String(v.id)))
+        for (const v of localList) {
+          if (!listedIds.has(String(v.id))) {
+            videos.unshift(v)
+          }
+        }
+      } catch {}
       if (videos.length > 0) {
         try {
           await saveCatalog(supabase, bucket, videos)
@@ -224,8 +242,6 @@ export const Video = {
       return []
     }
     try {
-      const fromApi = await listFromServerless()
-      if (fromApi.length > 0) return fromApi
       const raw = localStorage.getItem('videos') || '[]'
       const fsVideos = await listFromFirestore()
       if (fsVideos.length > 0) return fsVideos
@@ -237,11 +253,6 @@ export const Video = {
   async get(id) {
     const supabase = getSupabase()
     if (supabase) {
-      const fromApi = await listFromServerless()
-      if (fromApi.length > 0) {
-        const found = fromApi.find(v => String(v.id) === String(id))
-        if (found) return found
-      }
       const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'videos'
       const catalog = await loadCatalog(supabase, bucket)
       const byId = catalog.find(v => String(v.id) === String(id))
@@ -277,7 +288,7 @@ export const Video = {
       const thumbUrl = thumbPath ? supabase.storage.from(bucket).getPublicUrl(thumbPath).data.publicUrl : null
       const baseFile = base.name.includes('/') ? base.name.split('/').pop() : base.name
       const title = baseFile.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
-      return {
+      const candidate = {
         id: String(id),
         title,
         description: '',
@@ -291,13 +302,15 @@ export const Video = {
         likes: 0,
         is_deleted: false
       }
+      try {
+        const raw = localStorage.getItem('videos') || '[]'
+        const list = JSON.parse(raw)
+        const foundLocal = list.find(v => String(v.id) === String(id))
+        if (foundLocal) return { ...candidate, ...foundLocal }
+      } catch {}
+      return candidate
     }
     try {
-      const fromApi = await listFromServerless()
-      if (fromApi.length > 0) {
-        const found = fromApi.find(v => String(v.id) === String(id))
-        if (found) return found
-      }
       const fsVideos = await listFromFirestore()
       if (fsVideos.length > 0) {
         const found = fsVideos.find(v => String(v.id) === String(id))
@@ -311,7 +324,7 @@ export const Video = {
     }
   },
   async create(data) {
-    const item = { id: String(Date.now()), created_date: new Date().toISOString(), ...data }
+    const item = { id: String(data?.id || Date.now()), created_date: new Date().toISOString(), ...data }
     try {
       const raw = localStorage.getItem('videos') || '[]'
       const list = JSON.parse(raw)

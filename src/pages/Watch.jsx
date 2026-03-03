@@ -124,13 +124,12 @@ export default function Watch() {
           incrementViewCount(fetchedVideo);
         }
 
-        // Placeholder for fetching related videos. Replace with actual API call if available.
-        setRelatedVideos([
-          { id: '123', title: 'Artista X - A canção do verão', artist_name: 'Artista X', thumbnail_url: 'https://picsum.photos/320/180?random=1', views: 12000, created_date: new Date('2023-01-15'), duration: '3:45' },
-          { id: '124', title: 'Banda Y - Onde tudo começou (Clipe Oficial)', artist_name: 'Banda Y', thumbnail_url: 'https://picsum.photos/320/180?random=2', views: 8500, created_date: new Date('2023-03-20'), duration: '2:10' },
-          { id: '125', title: 'Cantora Z feat. Produtor K - Batidas Urbanas', artist_name: 'Cantora Z', thumbnail_url: 'https://picsum.photos/320/180?random=3', views: 25000, created_date: new Date('2023-05-01'), duration: '5:00' },
-          { id: '126', title: 'Guitarrista A - Solo Acústico na Montanha', artist_name: 'Guitarrista A', thumbnail_url: 'https://picsum.photos/320/180?random=4', views: 5000, created_date: new Date('2023-06-10'), duration: '4:20' },
-        ]);
+        const allVideos = await Video.filter();
+        const related = allVideos
+          .filter(v => String(v.id) !== String(videoId))
+          .filter(v => !fetchedVideo.category || v.category === fetchedVideo.category)
+          .slice(0, 8);
+        setRelatedVideos(related);
         
       } catch (err) {
         console.error("❌ Erro ao carregar vídeo:", err);
@@ -187,7 +186,7 @@ export default function Watch() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <div className="relative aspect-video bg-black rounded-2xl overflow-hidden mb-6 shadow-2xl shadow-black/30">
+              <div className="relative w-full h-[60vh] md:h-[70vh] bg-black rounded-2xl overflow-hidden mb-6 shadow-2xl shadow-black/30">
                 <VideoPlayer
                   src={video.video_url}
                   poster={video.thumbnail_url}

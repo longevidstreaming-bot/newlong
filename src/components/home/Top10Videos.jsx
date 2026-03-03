@@ -13,11 +13,13 @@ export default function Top10Videos() {
     const loadTopVideos = async () => {
       try {
         console.log('🏆 Carregando Top 10 vídeos...');
-        const topVideos = await Video.filter({
-          is_deleted: false
-        }, '-views', 10);
-        console.log('📊 Top 10 vídeos encontrados:', topVideos.length);
-        setVideos(topVideos);
+        const topVideos = await Video.filter();
+        const ordered = [...topVideos]
+          .filter(v => !v.is_deleted)
+          .sort((a, b) => (b.views || 0) - (a.views || 0))
+          .slice(0, 10);
+        console.log('📊 Top 10 vídeos encontrados:', ordered.length);
+        setVideos(ordered);
       } catch (error) {
         console.error('Erro ao carregar Top 10 vídeos:', error);
       }
@@ -30,9 +32,9 @@ export default function Top10Videos() {
     return (
       <div className="mb-12">
         <div className="h-8 bg-gray-800 rounded w-1/3 mb-6 animate-pulse"></div>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {Array(4).fill(0).map((_, i) => (
-            <div key={i} className="flex-shrink-0 w-72 h-40 bg-gray-800 rounded-2xl animate-pulse"></div>
+            <div key={i} className="w-full h-40 bg-gray-800 rounded-2xl animate-pulse"></div>
           ))}
         </div>
       </div>
@@ -53,14 +55,14 @@ export default function Top10Videos() {
         </h2>
       </motion.div>
 
-      <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {videos.map((video, index) => (
           <motion.div
             key={video.id}
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.1, duration: 0.5 }}
-            className="flex-shrink-0"
+            className=""
           >
             <Link to={createPageUrl(`Watch?v=${video.id}`)}>
               <TopVideoCard video={video} rank={index + 1} />

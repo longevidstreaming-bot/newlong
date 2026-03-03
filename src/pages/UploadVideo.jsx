@@ -138,6 +138,8 @@ export default function UploadVideo() {
     try {
       // Upload do arquivo de vídeo
       const videoUpload = await UploadFile({ file: videoFile });
+      const uploadedName = (videoUpload?.name || '').split('/').pop() || '';
+      const baseId = uploadedName.replace(/\.[^/.]+$/, '');
       
       // Upload da thumbnail
       const thumbnailUpload = await UploadFile({ file: thumbnailFile });
@@ -152,6 +154,7 @@ export default function UploadVideo() {
 
       // Criar o registro do vídeo no banco
       const newVideo = await Video.create({
+        id: baseId,
         title: videoData.title,
         description: videoData.description,
         video_url: videoUpload.file_url,

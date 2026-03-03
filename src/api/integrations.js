@@ -1,11 +1,21 @@
 import { getSupabase } from '@/supabase';
 // Firebase Storage não é usado para upload
 
-export async function UploadFile(input, pathPrefix = 'uploads') {
+function sanitizeName(name) {
+  return String(name || 'file')
+    .replace(/[^\w\s.-]/g, '')
+    .replace(/\s+/g, '-')
+    .slice(0, 120)
+}
+
+export async function UploadFile(input, pathPrefix = 'uploads', desiredName) {
   const file = input?.file ?? input
   if (!file) throw new Error('No file provided')
   const supabase = getSupabase()
-  const filename = `${Date.now()}_${file.name || 'file'}`
+  const original = file.name || 'file'
+  const ext = original.includes('.') ? '.' + original.split('.').pop() : ''
+  const base = desiredName ? sanitizeName(desiredName) : sanitizeName(original.replace(/\.[^/.]+$/, ''))
+  const filename = `${Date.now()}_${base}${ext}`
   const path = `${pathPrefix}/${filename}`
   if (!supabase) throw new Error('Supabase não configurado')
   const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'videos'

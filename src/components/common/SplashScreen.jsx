@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Music, Play } from 'lucide-react';
+import { Play } from 'lucide-react';
 import AudioBranding from './AudioBranding';
 
 export default function SplashScreen({ onComplete }) {
@@ -13,6 +13,7 @@ export default function SplashScreen({ onComplete }) {
 
   // Audio branding do localStorage
   const audioBrandingUrl = localStorage.getItem('longevid_audio_branding');
+  const logoUrl = localStorage.getItem('longevid_logo_url');
 
   return (
     <motion.div
@@ -40,12 +41,17 @@ export default function SplashScreen({ onComplete }) {
         transition={{ duration: 1, ease: "easeOut" }}
         className="relative mb-8"
       >
-        <div 
-          className="w-24 h-24 rounded-2xl flex items-center justify-center shadow-2xl"
-          style={{ background: 'linear-gradient(135deg, #7B61FF, #FF4F81)' }}
-        >
-          <Music className="w-12 h-12 text-white" />
-        </div>
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt="LONGEVID"
+            className="w-28 h-28 object-contain"
+          />
+        ) : (
+          <div className="w-24 h-24 rounded-2xl flex items-center justify-center shadow-2xl" style={{ backgroundColor: '#1E1E2F' }}>
+            <span className="text-white text-xl font-bold">LONGEVID</span>
+          </div>
+        )}
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}

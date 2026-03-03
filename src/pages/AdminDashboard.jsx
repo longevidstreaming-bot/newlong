@@ -3,11 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { User } from '@/api/entities';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ShieldCheck, Users, BarChart2, ArrowRight, Volume2 } from 'lucide-react'; // Added Volume2
+import { ShieldCheck, Users, BarChart2, ArrowRight, Volume2, Image as ImageIcon, Upload } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import AudioBrandingUpload from '../components/common/AudioBrandingUpload'; // New import
+import { UploadFile } from '@/api/integrations';
 
 const adminTools = [
   {
@@ -35,6 +36,9 @@ const adminTools = [
 
 export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoUrl, setLogoUrl] = useState(localStorage.getItem('longevid_logo_url') || '');
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -51,6 +55,22 @@ export default function AdminDashboard() {
     };
     checkAdmin();
   }, []);
+
+  const handleLogoUpload = async () => {
+    if (!logoFile) return;
+    setIsUploadingLogo(true);
+    try {
+      const { file_url } = await UploadFile({ file: logoFile }, 'uploads', 'longevid-logo');
+      localStorage.setItem('longevid_logo_url', file_url);
+      setLogoUrl(file_url);
+      alert('Logo atualizada com sucesso!');
+    } catch (e) {
+      console.error('Erro ao enviar logo:', e);
+      alert('Falha ao enviar logo');
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -79,6 +99,52 @@ export default function AdminDashboard() {
             Audio Branding
           </h2>
           <AudioBrandingUpload />
+        </section>
+
+        {/* Logo Upload Section */}
+        <section className="mb-10">
+          <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+            <ImageIcon className="w-7 h-7 text-[#FF4F81]" />
+            Logo da Marca
+          </h2>
+          <div className="bg-[var(--surface-dark)] border-[var(--border-soft)] rounded-2xl p-6">
+            <div className="flex items-center gap-6">
+              <div className="w-28 h-28 rounded-xl bg-[#121212] border border-[#2C2C3E] flex items-center justify-center overflow-hidden">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-[#B0B0B0] text-xs">Prévia</span>
+                )}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                    id="logo-upload"
+                  />
+                  <label htmlFor="logo-upload">
+                    <Button variant="outline" className="text-white border-[#2C2C3E]">
+                      <Upload className="w-4 h-4 mr-2" />
+                      Selecionar imagem
+                    </Button>
+                  </label>
+                  <Button 
+                    onClick={handleLogoUpload} 
+                    disabled={!logoFile || isUploadingLogo}
+                    className="bg-gradient-to-r from-[#FF4F81] to-[#7B61FF] text-white"
+                  >
+                    {isUploadingLogo ? 'Enviando...' : 'Enviar logo'}
+                  </Button>
+                </div>
+                <p className="text-[var(--text-secondary)] text-sm mt-3">
+                  Use PNG com fundo transparente para melhor resultado.
+                </p>
+              </div>
+            </div>
+          </div>
         </section>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -63,6 +63,7 @@ const dropdownNavLinks = {
     { name: 'Meu Perfil', icon: UserIcon, url: 'Profile' },
     { name: 'Torne-se Artista', icon: Music, url: 'BecomeArtist' },
     { name: 'Assinatura', icon: CreditCard, url: 'PlanSelection' },
+    { name: 'Upload', icon: Upload, url: 'UploadVideo' },
   ],
   artist: [
     { name: 'Meu Perfil', icon: UserIcon, url: 'ArtistProfile' },
@@ -473,4 +474,3 @@ export default function Layout({ children, currentPageName }) {
     </div>
   );
 }
-
