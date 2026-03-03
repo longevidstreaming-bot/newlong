@@ -1,9 +1,9 @@
 export default async function handler(req, res) {
   try {
     const { createClient } = await import('@supabase/supabase-js')
-    const url = process.env.SUPABASE_URL
+    const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-    const bucket = process.env.SUPABASE_BUCKET || 'videos'
+    const bucket = process.env.SUPABASE_BUCKET || process.env.VITE_SUPABASE_BUCKET || 'videos'
     if (!url || !key) {
       const missing = []
       if (!url) missing.push('SUPABASE_URL')
