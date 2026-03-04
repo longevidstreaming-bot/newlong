@@ -1,5 +1,5 @@
-import { auth, signOutUser, onAuthChanged } from '@/firebase'
-import { collection, getDocs } from 'firebase/firestore'
+import { auth, signOutUser, onAuthChanged, db } from '@/firebase'
+import { collection, getDocs, doc, setDoc } from 'firebase/firestore'
 import { getSupabase } from '@/supabase'
 
 async function loadCatalog() {
@@ -283,6 +283,54 @@ export const Video = {
               }
             }
           } catch {}
+          try {
+            const fsVideos = await listFromFirestore()
+            const fsMap = new Map(fsVideos.map(v => [String(v.id), v]))
+            const basename = (urlOrName) => {
+              const s = String(urlOrName || '')
+              const last = s.split('?')[0].split('#')[0].split('/').pop() || s
+              return last.replace(/\.[^/.]+$/, '')
+            }
+            for (let i = 0; i < slVideos.length; i++) {
+              const remote = slVideos[i]
+              const rid = String(remote.id)
+              let meta = fsMap.get(rid)
+              if (!meta) {
+                const rbase = basename(remote.video_url || remote.file_url || remote.name || rid)
+                meta = fsVideos.find(v => {
+                  const vbase = basename(v.video_url || v.file_url || v.name || v.id)
+                  return vbase === rbase || String(v.id) === rbase || String(v.id) === rid
+                })
+              }
+              if (meta) {
+                slVideos[i] = { ...remote, ...meta }
+              }
+            }
+          } catch {}
+          try {
+            const fsVideos = await listFromFirestore()
+            const fsMap = new Map(fsVideos.map(v => [String(v.id), v]))
+            const basename = (urlOrName) => {
+              const s = String(urlOrName || '')
+              const last = s.split('?')[0].split('#')[0].split('/').pop() || s
+              return last.replace(/\.[^/.]+$/, '')
+            }
+            for (let i = 0; i < slVideos.length; i++) {
+              const remote = slVideos[i]
+              const rid = String(remote.id)
+              let meta = fsMap.get(rid)
+              if (!meta) {
+                const rbase = basename(remote.video_url || remote.file_url || remote.name || rid)
+                meta = fsVideos.find(v => {
+                  const vbase = basename(v.video_url || v.file_url || v.name || v.id)
+                  return vbase === rbase || String(v.id) === rbase || String(v.id) === rid
+                })
+              }
+              if (meta) {
+                slVideos[i] = { ...remote, ...meta }
+              }
+            }
+          } catch {}
           return slVideos
         }
       }
@@ -429,9 +477,18 @@ export const Video = {
   async create(data) {
     const item = { id: String(data?.id || Date.now()), created_date: new Date().toISOString(), ...data }
     try {
+      const ref = doc(db, 'videos', String(item.id))
+      await setDoc(ref, item, { merge: true })
+    } catch {}
+    try {
       const raw = localStorage.getItem('videos') || '[]'
       const list = JSON.parse(raw)
-      list.unshift(item)
+      const exists = list.find(v => String(v.id) === String(item.id))
+      if (!exists) list.unshift(item)
+      else {
+        const idx = list.findIndex(v => String(v.id) === String(item.id))
+        if (idx >= 0) list[idx] = { ...list[idx], ...item }
+      }
       localStorage.setItem('videos', JSON.stringify(list))
     } catch {}
     return item
