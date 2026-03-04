@@ -41,7 +41,7 @@ export default function Home() {
     checkUserAndLoad();
   }, [categoryParam, searchQuery]);
 
-  const loadVideos = async (category, search, user) => {
+  const loadVideos = async (category, search) => {
     setIsLoading(true);
     try {
       let fetchedVideos;
@@ -85,7 +85,7 @@ export default function Home() {
     setActiveCategory(category);
     const url = category === "all" ? createPageUrl("Home") : createPageUrl(`Home?category=${category}`);
     window.history.pushState({}, '', url);
-    loadVideos(category, null, currentUser);
+    loadVideos(category, null);
   };
   
   const getPageTitle = () => {
@@ -119,7 +119,7 @@ export default function Home() {
   }
 
   if (showSplash) {
-    return <SplashScreen onComplete={() => { try { localStorage.setItem('longevid_splash_seen', '1'); } catch {} ; setShowSplash(false); }} />;
+    return <SplashScreen onComplete={() => { localStorage.setItem('longevid_splash_seen', '1'); setShowSplash(false); }} />;
   }
 
   return (

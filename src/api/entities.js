@@ -246,16 +246,39 @@ export const Video = {
             const raw = localStorage.getItem('videos') || '[]'
             const localList = JSON.parse(raw)
             const localMap = new Map(localList.map(v => [String(v.id), v]))
+            const basename = (urlOrName) => {
+              const s = String(urlOrName || '')
+              const last = s.split('?')[0].split('#')[0].split('/').pop() || s
+              return last.replace(/\.[^/.]+$/, '')
+            }
             for (let i = 0; i < slVideos.length; i++) {
-              const id = String(slVideos[i].id)
-              if (localMap.has(id)) {
-                const meta = localMap.get(id)
-                slVideos[i] = { ...slVideos[i], ...meta }
+              const remote = slVideos[i]
+              const rid = String(remote.id)
+              let meta = localMap.get(rid)
+              if (!meta) {
+                const rbase = basename(remote.video_url || remote.file_url || remote.name || rid)
+                meta = localList.find(v => {
+                  const vbase = basename(v.video_url || v.file_url || v.name || v.id)
+                  return vbase === rbase || String(v.id) === rbase || String(v.id) === rid
+                })
+              }
+              if (meta) {
+                slVideos[i] = { ...remote, ...meta }
+              } else {
+                const rbase = basename(remote.video_url || remote.file_url || remote.name || rid)
+                const looksLikeFile = /\.(mp4|webm|mov|avi)$/i.test(String(remote.title || '')) || String(remote.title || '').toLowerCase().includes('.mp4')
+                if (!remote.title || looksLikeFile) {
+                  const pretty = rbase.replace(/^\d+_/, '').replace(/[_-]+/g, ' ').trim()
+                  slVideos[i] = { ...remote, title: pretty || 'Vídeo' }
+                }
               }
             }
-            const listedIds = new Set(slVideos.map(v => String(v.id)))
+            const listedBases = new Set(slVideos.map(v => basename(v.video_url || v.file_url || v.name || v.id)))
             for (const v of localList) {
-              if (!listedIds.has(String(v.id))) {
+              const vbase = basename(v.video_url || v.file_url || v.name || v.id)
+              const idMatch = slVideos.find(r => String(r.id) === String(v.id))
+              const baseMatch = listedBases.has(vbase)
+              if (!idMatch && !baseMatch) {
                 slVideos.unshift(v)
               }
             }
@@ -275,16 +298,39 @@ export const Video = {
             const raw = localStorage.getItem('videos') || '[]'
             const localList = JSON.parse(raw)
             const localMap = new Map(localList.map(v => [String(v.id), v]))
+            const basename = (urlOrName) => {
+              const s = String(urlOrName || '')
+              const last = s.split('?')[0].split('#')[0].split('/').pop() || s
+              return last.replace(/\.[^/.]+$/, '')
+            }
             for (let i = 0; i < slVideos.length; i++) {
-              const id = String(slVideos[i].id)
-              if (localMap.has(id)) {
-                const meta = localMap.get(id)
-                slVideos[i] = { ...slVideos[i], ...meta }
+              const remote = slVideos[i]
+              const rid = String(remote.id)
+              let meta = localMap.get(rid)
+              if (!meta) {
+                const rbase = basename(remote.video_url || remote.file_url || remote.name || rid)
+                meta = localList.find(v => {
+                  const vbase = basename(v.video_url || v.file_url || v.name || v.id)
+                  return vbase === rbase || String(v.id) === rbase || String(v.id) === rid
+                })
+              }
+              if (meta) {
+                slVideos[i] = { ...remote, ...meta }
+              } else {
+                const rbase = basename(remote.video_url || remote.file_url || remote.name || rid)
+                const looksLikeFile = /\.(mp4|webm|mov|avi)$/i.test(String(remote.title || '')) || String(remote.title || '').toLowerCase().includes('.mp4')
+                if (!remote.title || looksLikeFile) {
+                  const pretty = rbase.replace(/^\d+_/, '').replace(/[_-]+/g, ' ').trim()
+                  slVideos[i] = { ...remote, title: pretty || 'Vídeo' }
+                }
               }
             }
-            const listedIds = new Set(slVideos.map(v => String(v.id)))
+            const listedBases = new Set(slVideos.map(v => basename(v.video_url || v.file_url || v.name || v.id)))
             for (const v of localList) {
-              if (!listedIds.has(String(v.id))) {
+              const vbase = basename(v.video_url || v.file_url || v.name || v.id)
+              const idMatch = slVideos.find(r => String(r.id) === String(v.id))
+              const baseMatch = listedBases.has(vbase)
+              if (!idMatch && !baseMatch) {
                 slVideos.unshift(v)
               }
             }
