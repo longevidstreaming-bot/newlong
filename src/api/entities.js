@@ -239,11 +239,19 @@ export const Video = {
         } catch {}
       }
       if (videos.length > 0) return videos
+      {
+        const slVideos = await listFromServerless()
+        if (slVideos.length > 0) return slVideos
+      }
       const fsVideos = await listFromFirestore()
       if (fsVideos.length > 0) return fsVideos
       return []
     }
     try {
+      {
+        const slVideos = await listFromServerless()
+        if (slVideos.length > 0) return slVideos
+      }
       const raw = localStorage.getItem('videos') || '[]'
       const fsVideos = await listFromFirestore()
       if (fsVideos.length > 0) return fsVideos
@@ -313,6 +321,13 @@ export const Video = {
       return candidate
     }
     try {
+      {
+        const slVideos = await listFromServerless()
+        if (slVideos.length > 0) {
+          const found = slVideos.find(v => String(v.id) === String(id))
+          if (found) return found
+        }
+      }
       const fsVideos = await listFromFirestore()
       if (fsVideos.length > 0) {
         const found = fsVideos.find(v => String(v.id) === String(id))
