@@ -115,20 +115,22 @@ export const User = {
     const videos = await Video.filter()
     const map = new Map()
     videos.forEach(v => {
-      const id = v.artist_id || 'unknown'
+      const id = v.artist_id
+      if (!id) return
       if (!map.has(id)) {
         map.set(id, {
           id,
           artist_name: v.artist_name || 'Artista',
-          artist_avatar: v.thumbnail_url || '',
+          artist_avatar: v.artist_avatar || v.thumbnail_url || '',
           artist_bio: '',
-          created_date: v.created_date
+          created_date: v.created_date,
+          genre: v.category || 'pop'
         })
       }
     })
     let list = Array.from(map.values())
     if (criteria?.role === 'artist') {
-      // already only artists inferred from vídeos
+      list = list
     }
     list = list.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
     if (typeof limit === 'number') list = list.slice(0, limit)
@@ -141,7 +143,7 @@ export const User = {
       return {
         id: String(id),
         artist_name: fromVideo.artist_name || 'Artista',
-        artist_avatar: fromVideo.thumbnail_url || '',
+        artist_avatar: fromVideo.artist_avatar || fromVideo.thumbnail_url || '',
         artist_bio: '',
         social_links: {}
       }

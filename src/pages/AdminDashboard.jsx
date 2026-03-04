@@ -60,13 +60,36 @@ export default function AdminDashboard() {
     if (!logoFile) return;
     setIsUploadingLogo(true);
     try {
-      const { file_url } = await UploadFile({ file: logoFile }, 'uploads', 'longevid-logo');
-      localStorage.setItem('longevid_logo_url', file_url);
-      setLogoUrl(file_url);
-      alert('Logo atualizada com sucesso!');
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const isWhite = r > 240 && g > 240 && b > 240;
+            data[i + 3] = isWhite ? 0 : 255;
+          }
+          ctx.putImageData(imageData, 0, 0);
+          const transparentDataUrl = canvas.toDataURL('image/png');
+          localStorage.setItem('longevid_logo_url', transparentDataUrl);
+          setLogoUrl(transparentDataUrl);
+          alert('Logo processada com fundo removido!');
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(logoFile);
     } catch (e) {
-      console.error('Erro ao enviar logo:', e);
-      alert('Falha ao enviar logo');
+      console.error('Erro ao processar logo:', e);
+      alert('Falha ao processar logo');
     } finally {
       setIsUploadingLogo(false);
     }

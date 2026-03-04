@@ -32,25 +32,39 @@ export default function ArtistProfile() {
       }
 
       try {
-        // Buscar dados do artista
         const artistData = await User.get(artistId);
         if (!artistData) {
-          setError("Usuário não encontrado.");
-          setIsLoading(false);
-          return;
+          const all = await Video.filter();
+          const sample = all.find(v => String(v.artist_id) === String(artistId));
+          if (!sample) {
+            setArtist({
+              id: String(artistId),
+              artist_name: 'Artista',
+              artist_avatar: `https://ui-avatars.com/api/?name=Artista&background=7B61FF&color=fff`,
+              artist_bio: '',
+              social_links: {}
+            });
+          } else {
+            setArtist({
+              id: String(artistId),
+              artist_name: sample.artist_name || 'Artista',
+              artist_avatar: sample.artist_avatar || sample.thumbnail_url || '',
+              artist_bio: '',
+              social_links: {}
+            });
+          }
+        } else {
+          setArtist(artistData);
         }
-        
-        setArtist(artistData);
 
-        // Buscar vídeos do artista (sem filtro de status)
-        const artistVideos = await Video.filter({
-          artist_id: artistId,
-          is_deleted: false
-        }, '-created_date');
+        const list = await Video.filter();
+        const artistVideos = list
+          .filter(v => String(v.artist_id) === String(artistId))
+          .filter(v => !v.is_deleted)
+          .sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
 
         setVideos(artistVideos);
         
-        // Definir o vídeo mais recente como "último lançamento"
         if (artistVideos.length > 0) {
           setLatestVideo(artistVideos[0]);
         }

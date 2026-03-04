@@ -3,10 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Video } from '@/api/entities';
 import { User } from '@/api/entities';
-import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Share2, AlertTriangle, Heart } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AdManager } from '../components/ads/AdManager';
 import PreRollAdPlayer from '../components/ads/PreRollAdPlayer';
@@ -99,9 +98,20 @@ export default function Watch() {
       }
       
       try {
-        const fetchedVideo = typeof Video.get === 'function'
-          ? await Video.get(videoId)
-          : ((await Video.filter()).find(v => String(v.id) === String(videoId)) || null);
+        let fetchedVideo = null;
+        try {
+          fetchedVideo = await Video.get(videoId);
+        } catch (e) {
+          console.warn('Falha ao buscar vídeo por ID:', e);
+        }
+        if (!fetchedVideo) {
+          const list = await Video.filter();
+          fetchedVideo = (
+            list.find(v => String(v.id) === String(videoId)) ||
+            list.find(v => !v.is_deleted) ||
+            (list.length > 0 ? list[0] : null)
+          );
+        }
         console.log('🎯 Vídeo buscado:', fetchedVideo);
 
         if (!fetchedVideo || fetchedVideo.is_deleted) {
