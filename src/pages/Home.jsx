@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Video } from "@/api/entities";
 import { User } from "@/api/entities";
 import SplashScreen from "../components/common/SplashScreen";
@@ -13,7 +13,13 @@ import { createPageUrl } from '@/utils';
 import Top10Videos from "../components/home/Top10Videos";
 
 export default function Home() {
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    try {
+      return localStorage.getItem('longevid_splash_seen') !== '1';
+    } catch {
+      return true;
+    }
+  });
   const [videos, setVideos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("all");
@@ -113,7 +119,7 @@ export default function Home() {
   }
 
   if (showSplash) {
-    return <SplashScreen onComplete={() => setShowSplash(false)} />;
+    return <SplashScreen onComplete={() => { try { localStorage.setItem('longevid_splash_seen', '1'); } catch {} ; setShowSplash(false); }} />;
   }
 
   return (

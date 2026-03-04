@@ -241,7 +241,27 @@ export const Video = {
       if (videos.length > 0) return videos
       {
         const slVideos = await listFromServerless()
-        if (slVideos.length > 0) return slVideos
+        if (slVideos.length > 0) {
+          try {
+            const raw = localStorage.getItem('videos') || '[]'
+            const localList = JSON.parse(raw)
+            const localMap = new Map(localList.map(v => [String(v.id), v]))
+            for (let i = 0; i < slVideos.length; i++) {
+              const id = String(slVideos[i].id)
+              if (localMap.has(id)) {
+                const meta = localMap.get(id)
+                slVideos[i] = { ...slVideos[i], ...meta }
+              }
+            }
+            const listedIds = new Set(slVideos.map(v => String(v.id)))
+            for (const v of localList) {
+              if (!listedIds.has(String(v.id))) {
+                slVideos.unshift(v)
+              }
+            }
+          } catch {}
+          return slVideos
+        }
       }
       const fsVideos = await listFromFirestore()
       if (fsVideos.length > 0) return fsVideos
@@ -250,7 +270,27 @@ export const Video = {
     try {
       {
         const slVideos = await listFromServerless()
-        if (slVideos.length > 0) return slVideos
+        if (slVideos.length > 0) {
+          try {
+            const raw = localStorage.getItem('videos') || '[]'
+            const localList = JSON.parse(raw)
+            const localMap = new Map(localList.map(v => [String(v.id), v]))
+            for (let i = 0; i < slVideos.length; i++) {
+              const id = String(slVideos[i].id)
+              if (localMap.has(id)) {
+                const meta = localMap.get(id)
+                slVideos[i] = { ...slVideos[i], ...meta }
+              }
+            }
+            const listedIds = new Set(slVideos.map(v => String(v.id)))
+            for (const v of localList) {
+              if (!listedIds.has(String(v.id))) {
+                slVideos.unshift(v)
+              }
+            }
+          } catch {}
+          return slVideos
+        }
       }
       const raw = localStorage.getItem('videos') || '[]'
       const fsVideos = await listFromFirestore()

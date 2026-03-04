@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Notification } from '@/api/entities';
 import { User } from '@/api/entities';
@@ -15,7 +15,6 @@ import {
   LogOut,
   Menu,
   X,
-  Play,
   Music,
   CreditCard,
   Crown,
@@ -213,9 +212,11 @@ export default function Layout({ children, currentPageName }) {
               </Button>
               
               <a href={createPageUrl('Home')} className="flex items-center space-x-3 text-white">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #FF4F81, #7B61FF)' }}>
-                  <Play className="w-6 h-6 fill-current" />
-                </div>
+                <img 
+                  src={localStorage.getItem('longevid_logo_url') || 'https://i.imgur.com/zCcz5iB.png'} 
+                  alt="LONGEVID" 
+                  className="w-10 h-10 rounded-xl object-contain"
+                />
                 <span className="text-xl font-bold">LONGEVID</span>
               </a>
 
