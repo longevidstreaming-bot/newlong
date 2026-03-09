@@ -233,6 +233,40 @@ export const Video = {
           }
         }
       } catch {}
+      // Merge Firestore metadata (título/capa) por id ou basename
+      try {
+        const fsVideos = await listFromFirestore()
+        if (fsVideos.length > 0) {
+          const fsMap = new Map(fsVideos.map(v => [String(v.id), v]))
+          const basename = (urlOrName) => {
+            const s = String(urlOrName || '')
+            const last = s.split('?')[0].split('#')[0].split('/').pop() || s
+            return last.replace(/\.[^/.]+$/, '')
+          }
+          for (let i = 0; i < videos.length; i++) {
+            const cand = videos[i]
+            const id = String(cand.id)
+            let meta = fsMap.get(id)
+            if (!meta) {
+              const rbase = basename(cand.video_url || cand.id)
+              meta = fsVideos.find(v => {
+                const vbase = basename(v.video_url || v.id)
+                return vbase === rbase || String(v.id) === rbase || String(v.id) === id
+              })
+            }
+            if (meta) {
+              videos[i] = { ...cand, ...meta }
+            } else {
+              // Em último caso, melhorar título derivado do arquivo
+              const rbase = basename(cand.video_url || cand.id)
+              const pretty = rbase.replace(/^\d+_/, '').replace(/[_-]+/g, ' ').trim()
+              if (!cand.title || /\.mp4|\.webm|\.mov|\.avi/i.test(String(cand.title))) {
+                videos[i] = { ...cand, title: pretty || 'Vídeo' }
+              }
+            }
+          }
+        }
+      } catch {}
       if (videos.length > 0) {
         try {
           await saveCatalog(supabase, bucket, videos)
