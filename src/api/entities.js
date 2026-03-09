@@ -222,9 +222,33 @@ export const Video = {
           try {
             const fsVideos = await listFromFirestore()
             const fsMap = new Map(fsVideos.map(v => [String(v.id), v]))
+            const basename = (urlOrName) => {
+              const s = String(urlOrName || '')
+              const last = s.split('?')[0].split('#')[0].split('/').pop() || s
+              return last.replace(/\.[^/.]+$/, '')
+            }
             for (let i = 0; i < slVideosEarly.length; i++) {
-              const rid = String(slVideosEarly[i].id)
-              if (fsMap.has(rid)) slVideosEarly[i] = { ...slVideosEarly[i], ...fsMap.get(rid) }
+              const remote = slVideosEarly[i]
+              const rid = String(remote.id)
+              let meta = fsMap.get(rid)
+              if (!meta) {
+                const rbase = basename(remote.video_url || remote.file_url || remote.name || rid)
+                meta = fsVideos.find(v => {
+                  const vbase = basename(v.video_url || v.file_url || v.name || v.id)
+                  return vbase === rbase || String(v.id) === rbase || String(v.id) === rid
+                })
+              }
+              if (meta) {
+                slVideosEarly[i] = { ...remote, ...meta }
+              } else {
+                const rbase = basename(remote.video_url || remote.file_url || remote.name || rid)
+                const digitsOnly = /^\d+$/.test(String(remote.title || ''))
+                const looksLikeFile = /\.(mp4|webm|mov|avi|mp3)$/i.test(String(remote.title || '')) || String(remote.title || '').toLowerCase().includes('.mp4')
+                if (!remote.title || remote.title === rbase || digitsOnly || looksLikeFile) {
+                  const pretty = rbase.replace(/^\d+_/, '').replace(/[_-]+/g, ' ').trim()
+                  slVideosEarly[i] = { ...remote, title: pretty || 'Vídeo' }
+                }
+              }
             }
           } catch {}
           return slVideosEarly

@@ -53,13 +53,26 @@ export default async function handler(req, res) {
         const mp4Path = f.path || name
         const filenameOnly = name.includes('/') ? name.split('/').pop() : name
         const baseId = filenameOnly.replace(/\.(mp4|webm)$/i, '')
-        const thumb = files.find(t => {
+        // Encontrar capa: prioriza *_thumbnail.*; se não houver, qualquer imagem que comece com baseId
+        const imageExt = /\.(png|jpe?g|webp|gif|bmp)$/i
+        let thumbCandidate = files.find(t => {
           const tname = t.name || ''
           const tfile = tname.includes('/') ? tname.split('/').pop() : tname
-          return tfile.startsWith(baseId) && tfile.includes('thumbnail')
+          return tfile.startsWith(baseId) && /thumbnail|thumb/i.test(tfile) && imageExt.test(tfile)
         })
-        const thumbPath = thumb ? (thumb.path || thumb.name) : null
-        const title = filenameOnly.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
+        if (!thumbCandidate) {
+          thumbCandidate = files.find(t => {
+            const tname = t.name || ''
+            const tfile = tname.includes('/') ? tname.split('/').pop() : tname
+            return tfile.startsWith(baseId) && imageExt.test(tfile)
+          })
+        }
+        const thumbPath = thumbCandidate ? (thumbCandidate.path || thumbCandidate.name) : null
+        const title = filenameOnly
+          .replace(/^\d+_/, '')
+          .replace(/\.(mp4|webm)$/i, '')
+          .replace(/[_-]+/g, ' ')
+          .trim()
         let video_url = null
         let thumbnail_url = null
         {
