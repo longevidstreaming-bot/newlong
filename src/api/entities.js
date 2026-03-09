@@ -183,10 +183,60 @@ export const Video = {
           is_deleted: !!item.is_deleted
         }))
       }
+      try {
+        const slVideosEarly = await listFromServerless()
+        if (slVideosEarly.length > 0) {
+          console.log('[Video.filter] serverless primeiro:', slVideosEarly.length)
+          try {
+            const raw = localStorage.getItem('videos') || '[]'
+            const localList = JSON.parse(raw)
+            const localMap = new Map(localList.map(v => [String(v.id), v]))
+            const basename = (urlOrName) => {
+              const s = String(urlOrName || '')
+              const last = s.split('?')[0].split('#')[0].split('/').pop() || s
+              return last.replace(/\.[^/.]+$/, '')
+            }
+            for (let i = 0; i < slVideosEarly.length; i++) {
+              const remote = slVideosEarly[i]
+              const rid = String(remote.id)
+              let meta = localMap.get(rid)
+              if (!meta) {
+                const rbase = basename(remote.video_url || remote.file_url || remote.name || rid)
+                meta = localList.find(v => {
+                  const vbase = basename(v.video_url || v.file_url || v.name || v.id)
+                  return vbase === rbase || String(v.id) === rbase || String(v.id) === rid
+                })
+              }
+              if (meta) {
+                slVideosEarly[i] = { ...remote, ...meta }
+              } else {
+                const rbase = basename(remote.video_url || remote.file_url || remote.name || rid)
+                const looksLikeFile = /\.(mp4|webm|mov|avi)$/i.test(String(remote.title || '')) || String(remote.title || '').toLowerCase().includes('.mp4')
+                if (!remote.title || looksLikeFile) {
+                  const pretty = rbase.replace(/^\d+_/, '').replace(/[_-]+/g, ' ').trim()
+                  slVideosEarly[i] = { ...remote, title: pretty || 'Vídeo' }
+                }
+              }
+            }
+          } catch {}
+          try {
+            const fsVideos = await listFromFirestore()
+            const fsMap = new Map(fsVideos.map(v => [String(v.id), v]))
+            for (let i = 0; i < slVideosEarly.length; i++) {
+              const rid = String(slVideosEarly[i].id)
+              if (fsMap.has(rid)) slVideosEarly[i] = { ...slVideosEarly[i], ...fsMap.get(rid) }
+            }
+          } catch {}
+          return slVideosEarly
+        }
+      } catch (e) {
+        console.warn('[Video.filter] erro serverless inicial:', e?.message)
+      }
       const files = await listAll(supabase, bucket)
+      console.log('[Video.filter] usando listAll; total arquivos:', files.length)
       const videos = files
         .filter(f => f.name.toLowerCase().endsWith('.mp4') || f.name.toLowerCase().endsWith('.webm'))
-        .map(f => {
+        .map(async f => {
           const fileName = f.name.includes('/') ? f.name.split('/').pop() : f.name
           const baseId = fileName.replace(/\.(mp4|webm)$/i, '')
           const mp4Path = f.path || f.name
@@ -195,9 +245,29 @@ export const Video = {
             return tfile.startsWith(baseId) && tfile.includes('thumbnail')
           })
           const thumbPath = thumb ? (thumb.path || thumb.name) : null
-          const mp4Url = supabase.storage.from(bucket).getPublicUrl(mp4Path).data.publicUrl
-          const thumbUrl = thumbPath ? supabase.storage.from(bucket).getPublicUrl(thumbPath).data.publicUrl : null
-          const title = fileName.replace(/^\d+_/, '').replace(/\.(mp4|webm)$/i, '')
+          let mp4Url = null
+          try {
+            const signed = await supabase.storage.from(bucket).createSignedUrl(mp4Path, 60 * 60 * 24 * 7)
+            mp4Url = signed?.data?.signedUrl || null
+          } catch {}
+          if (!mp4Url) {
+            mp4Url = supabase.storage.from(bucket).getPublicUrl(mp4Path).data.publicUrl
+          }
+          let thumbUrl = null
+          if (thumbPath) {
+            try {
+              const signedT = await supabase.storage.from(bucket).createSignedUrl(thumbPath, 60 * 60 * 24 * 7)
+              thumbUrl = signedT?.data?.signedUrl || null
+            } catch {}
+            if (!thumbUrl) {
+              thumbUrl = supabase.storage.from(bucket).getPublicUrl(thumbPath).data.publicUrl
+            }
+          }
+          const title = fileName
+            .replace(/^\d+_/, '')
+            .replace(/\.(mp4|webm)$/i, '')
+            .replace(/[_-]+/g, ' ')
+            .trim()
           return {
             id: baseId,
             title,
@@ -213,23 +283,24 @@ export const Video = {
             is_deleted: false
           }
         })
+      const videosResolved = await Promise.all(videos)
       // Override with local metadata if present
       try {
         const raw = localStorage.getItem('videos') || '[]'
         const localList = JSON.parse(raw)
         const localMap = new Map(localList.map(v => [String(v.id), v]))
-        for (let i = 0; i < videos.length; i++) {
-          const id = String(videos[i].id)
+        for (let i = 0; i < videosResolved.length; i++) {
+          const id = String(videosResolved[i].id)
           if (localMap.has(id)) {
             const meta = localMap.get(id)
-            videos[i] = { ...videos[i], ...meta }
+            videosResolved[i] = { ...videosResolved[i], ...meta }
           }
         }
         // Include purely local entries not present in storage listing
-        const listedIds = new Set(videos.map(v => String(v.id)))
+        const listedIds = new Set(videosResolved.map(v => String(v.id)))
         for (const v of localList) {
           if (!listedIds.has(String(v.id))) {
-            videos.unshift(v)
+            videosResolved.unshift(v)
           }
         }
       } catch {}
@@ -243,8 +314,8 @@ export const Video = {
             const last = s.split('?')[0].split('#')[0].split('/').pop() || s
             return last.replace(/\.[^/.]+$/, '')
           }
-          for (let i = 0; i < videos.length; i++) {
-            const cand = videos[i]
+          for (let i = 0; i < videosResolved.length; i++) {
+            const cand = videosResolved[i]
             const id = String(cand.id)
             let meta = fsMap.get(id)
             if (!meta) {
@@ -255,24 +326,27 @@ export const Video = {
               })
             }
             if (meta) {
-              videos[i] = { ...cand, ...meta }
+              videosResolved[i] = { ...cand, ...meta }
             } else {
               // Em último caso, melhorar título derivado do arquivo
               const rbase = basename(cand.video_url || cand.id)
               const pretty = rbase.replace(/^\d+_/, '').replace(/[_-]+/g, ' ').trim()
               if (!cand.title || /\.mp4|\.webm|\.mov|\.avi/i.test(String(cand.title))) {
-                videos[i] = { ...cand, title: pretty || 'Vídeo' }
+                videosResolved[i] = { ...cand, title: pretty || 'Vídeo' }
               }
             }
           }
         }
       } catch {}
-      if (videos.length > 0) {
+      if (videosResolved.length > 0) {
         try {
-          await saveCatalog(supabase, bucket, videos)
+          await saveCatalog(supabase, bucket, videosResolved)
         } catch {}
       }
-      if (videos.length > 0) return videos
+      if (videosResolved.length > 0) {
+        console.log('[Video.filter] retornando vídeos do bucket com merge Firestore/local:', videosResolved.length)
+        return videosResolved
+      }
       {
         const slVideos = await listFromServerless()
         if (slVideos.length > 0) {
