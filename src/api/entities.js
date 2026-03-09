@@ -331,6 +331,21 @@ export const Video = {
               }
             }
           } catch {}
+          // Sincronizar metadados locais com Firestore (migração) uma única vez por navegador
+          try {
+            const syncFlag = localStorage.getItem('longevid_fs_sync_v1')
+            if (auth.currentUser && syncFlag !== '1') {
+              const raw = localStorage.getItem('videos') || '[]'
+              const localList = JSON.parse(raw)
+              for (const v of localList) {
+                try {
+                  const ref = doc(db, 'videos', String(v.id))
+                  await setDoc(ref, v, { merge: true })
+                } catch {}
+              }
+              localStorage.setItem('longevid_fs_sync_v1', '1')
+            }
+          } catch {}
           return slVideos
         }
       }
@@ -381,6 +396,21 @@ export const Video = {
               if (!idMatch && !baseMatch) {
                 slVideos.unshift(v)
               }
+            }
+          } catch {}
+          // Sincronizar metadados locais com Firestore (migração) uma única vez por navegador
+          try {
+            const syncFlag = localStorage.getItem('longevid_fs_sync_v1')
+            if (auth.currentUser && syncFlag !== '1') {
+              const raw = localStorage.getItem('videos') || '[]'
+              const localList = JSON.parse(raw)
+              for (const v of localList) {
+                try {
+                  const ref = doc(db, 'videos', String(v.id))
+                  await setDoc(ref, v, { merge: true })
+                } catch {}
+              }
+              localStorage.setItem('longevid_fs_sync_v1', '1')
             }
           } catch {}
           return slVideos

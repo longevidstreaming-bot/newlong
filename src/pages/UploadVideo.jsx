@@ -142,7 +142,7 @@ export default function UploadVideo() {
       const baseId = uploadedName.replace(/\.[^/.]+$/, '');
       
       // Upload da thumbnail
-      const thumbnailUpload = await UploadFile({ file: thumbnailFile });
+      const thumbnailUpload = await UploadFile({ file: thumbnailFile }, 'uploads', `${baseId}_thumbnail`);
       const thumbnailUrl = thumbnailUpload.file_url;
 
       // Upload do comprovante de direitos autorais (se fornecido)
