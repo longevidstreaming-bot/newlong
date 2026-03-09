@@ -1,5 +1,15 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  signInWithRedirect,
+  getRedirectResult
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -14,6 +24,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+// Garantir persistência em localStorage (evitar loop de login em mobile/navegadores)
+setPersistence(auth, browserLocalPersistence).catch(() => {});
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
@@ -21,6 +33,21 @@ export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   const result = await signInWithPopup(auth, provider);
   return result.user;
+}
+
+export async function signInWithGoogleRedirect() {
+  const provider = new GoogleAuthProvider();
+  await signInWithRedirect(auth, provider);
+  return true;
+}
+
+export async function getRedirectUser() {
+  try {
+    const result = await getRedirectResult(auth);
+    return result?.user || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function signOutUser() {

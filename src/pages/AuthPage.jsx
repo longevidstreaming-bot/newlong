@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { signInWithGoogle, onAuthChanged } from '@/firebase';
+import { signInWithGoogle, onAuthChanged, signInWithGoogleRedirect, getRedirectUser } from '@/firebase';
 import { createPageUrl } from '@/utils';
 
 export default function AuthPage() {
@@ -7,20 +7,39 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthChanged(user => {
-      if (user) {
+    let unsub = () => {};
+    const init = async () => {
+      // Primeiro, tenta obter resultado de redirect (mobile)
+      const redirected = await getRedirectUser();
+      if (redirected) {
         window.location.href = createPageUrl('Home');
-      } else {
-        setLoading(false);
-        // try popup sign-in immediately
-        signInWithGoogle().then(() => {
-          window.location.href = createPageUrl('Home');
-        }).catch(err => {
-          setError(err.message || 'Falha ao iniciar login Google');
-        });
+        return;
       }
-    });
-    return () => unsub();
+      unsub = onAuthChanged(async (user) => {
+        if (user) {
+          window.location.href = createPageUrl('Home');
+        } else {
+          setLoading(false);
+          // Tenta popup; se falhar por ambiente, usa redirect
+          try {
+            await signInWithGoogle();
+            window.location.href = createPageUrl('Home');
+          } catch (err) {
+            try {
+              // evita loop de redirect
+              if (!sessionStorage.getItem('auth_redirect_in_progress')) {
+                sessionStorage.setItem('auth_redirect_in_progress', '1');
+                await signInWithGoogleRedirect();
+              }
+            } catch (e) {
+              setError(err?.message || e?.message || 'Falha ao iniciar login Google');
+            }
+          }
+        }
+      });
+    };
+    init();
+    return () => { try { unsub(); } catch {} };
   }, []);
 
   return (
@@ -35,7 +54,12 @@ export default function AuthPage() {
               onClick={async () => {
                 setError('');
                 try {
-                  await signInWithGoogle();
+                  try {
+                    await signInWithGoogle();
+                  } catch {
+                    sessionStorage.setItem('auth_redirect_in_progress', '1');
+                    await signInWithGoogleRedirect();
+                  }
                   window.location.href = createPageUrl('Home');
                 } catch (e) {
                   setError(e.message || 'Erro no login Google');
