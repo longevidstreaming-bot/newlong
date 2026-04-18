@@ -1,10 +1,2 @@
-{
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    },
-    "jsx": "react-jsx"
-  },
-  "include": ["src/**/*.js", "src/**/*.jsx"]
-} 
+"@aws-sdk/client-s3": "^3.x",
+"@aws-sdk/s3-request-presigner": "^3.x"
